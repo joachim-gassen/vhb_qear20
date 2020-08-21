@@ -37,3 +37,8 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# Joachims stuff
+.DS_Store
+host_access_keys.csv
+*.Rproj

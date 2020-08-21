@@ -40,3 +40,12 @@ A potential start is https://guides.github.com/activities/hello-world/ or http:/
 ### Some guidance on R
 
 While you are free to use any software from the list above, if you have no preferences, I would encourage you to take a look at R. There are many online references and tutorials around. A particularly useful textbook (which is available online) can be found here: http://r4ds.had.co.nz/.
+
+
+### Disclaimer
+
+<p align="center">
+<img src="materials/programming_meme.jpg" alt="A meme!" width="40%"/>
+</p>
+
+

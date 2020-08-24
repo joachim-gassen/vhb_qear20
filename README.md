@@ -27,7 +27,7 @@ To start familiarizing yourself with the data, please take a look at the two iss
 When you run into problems that you want to share/discuss with the whole course, reply to the issue in the main repository. Don't be shy. Asking questions is the best way to learn.
 
 
-# Handling the repository
+### Handling the repository
 
 This repository follows a "fork and pull request" workflow. Only I can commit to the repository directly. You can and should fork your own versions of this repository. A fork is a copy of the project on Github which is under your control, meaning that you can make changes to it by committing to it. 
 

@@ -2,7 +2,7 @@
 
 ### Welcome!
 
-This is Group X
+This is Group JJMV - the best group ever :)
 
 Hello :)
 

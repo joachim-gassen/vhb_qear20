@@ -2,7 +2,7 @@
 
 ### Welcome!
 
-This is Group JJMV
+This is Group JJMV - the best group ever :)
 
 This is the repository of the upcoming VHB ProDok Course "Quantitative Empirical Accounting Research and Open Science Methods". We will use this repository to collaborate on the class project and to share class materials. Please keep in mind that this a _public_ repository, meaning that everybody can read its content. When you are new to Github I encourage you to take a look at the section ("Some guidance on git and Github") below prior to jumping at the content of the repo or the class project.
 

@@ -6,10 +6,10 @@ Codebook
 getwd()
 
 #set new wd to "vhb_qear20" repository folder
-directory <- setwd("C:/MvdH/Git Repository/vhb_qear20")
+directory <- setwd("C:/Users/wagne/Desktop/vhb_qear20")
 
 #import data
-insolv <- file.path("./raw_data", "insolvency_filings_de_julaug2020_incomplete.csv")
+insolv <- paste0(getwd(),"/raw_data/insolvency_filings_de_julaug2020_incomplete.csv"
 dat1 <- read.csv(file = insolv, header = TRUE, fileEncoding = "UTF-8")
 print(dat1)
 
@@ -70,7 +70,7 @@ cro(dat1$date, dat1$subject)
 #2. Import and clean orbis data
 
 #import data
-orbis <- file.path("./raw_data", "orbis_wrds_de.csv")
+orbis <- paste0(getwd(),"/raw_data/orbis_wrds_de.csv.gz")
 dat2 <- read.csv(file = orbis, header = TRUE, fileEncoding = "UTF-8")
 print(dat2)
 

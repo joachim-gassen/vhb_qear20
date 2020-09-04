@@ -17,12 +17,12 @@ library(lubridate)
 getwd()
 
 #set new wd to "vhb_qear20" repository folder
-directory <- setwd("C:/Users/wagne/Desktop/vhb_qear20")
+directory <- setwd("/home/admin_quant/vhb_qear20/")
 
 #import data
 insolv <- paste0(getwd(),"/raw_data/insolvency_filings_de_julaug2020_incomplete.csv")
 dat1 <- read.csv(file = insolv, header = TRUE, fileEncoding = "UTF-8")
-view(dat1)
+View(dat1)
 
 #check type of data
 typeof(dat1)
@@ -72,7 +72,7 @@ dat1 = apply_labels(dat1,
 #-------------------------------------------------------------------------------
 #Descriptives
 
-#number of filings after removin duplicates: 9355
+#number of filings after removing duplicates: 9355
 nrow(dat1)
 
 
@@ -100,8 +100,12 @@ tab3 <- dat1 %>%
 
 #Cases per filing type per day (would be nice if we can set this to month, but I fail to extract the month from year)
 cro(dat1$date, dat1$subject)
+
 tab3 <- cro(dat1$date, dat1$subject)
 
+
+tab1 <- cro(dat1$date, dat1$subject)
+View(tab1)
 
 
 
@@ -118,9 +122,9 @@ tab3 <- cro(dat1$date, dat1$subject)
 #2. Import and clean orbis data
 
 #import data
-orbis <- paste0(getwd(),"/raw_data/orbis_wrds_de.csv.gz")
+orbis <- paste0(getwd(),"/raw_data/orbis_wrds_de.csv")
 dat2 <- read.csv(file = orbis, header = TRUE, fileEncoding = "UTF-8")
-view(dat2)
+View(dat2)
 
 
 
@@ -216,6 +220,19 @@ Filetype
 
 #Cases per filing type per year
 cro(dat2$year, dat2$filing_type)
+
+#---- Histograms of orbis data
+
+
+hist(dat2$year,
+     main = "Histogram of cases per year buckets",
+     breaks = 15, 
+     las=3,  
+     xlim=c(1990,2020),
+     col = 'skyblue3', 
+     labels = TRUE,
+     )
+
 
 #-------------------------------------------------------------------------------
 # further data analysis of the insolvency data set

@@ -6,6 +6,7 @@ library(tidyverse)
 library(expss)
 library(dplyr)
 library(lubridate)
+library(ggplot2)
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -40,7 +41,7 @@ nrow(dat1) #number of rows
 lapply(dat1, class)
 
 #change variable type
-dat1$date <- as.Date(dat1$date, ymd)
+dat1$date <- as.Date(dat1$date)
 dat1$subject <- as.factor(dat1$subject)
 
 #remove rows that are complete duplicates of other rows
@@ -51,8 +52,6 @@ sum(dup>0)
 #checks if cout file number is a unique identifier
 length(unique(dat1$`Court file number`)) == length(dat1$`Court file number`)
 
-#safe clean file
-write.csv(dat1, file.path("./data", "dat1_clean.csv"), row.names = TRUE)
 
 #label variables
 
@@ -68,6 +67,9 @@ dat1 = apply_labels(dat1,
 dat1 = apply_labels(dat1,
                     date = "Date of Insolvency Filing"
 )
+
+#safe clean file
+write.csv(dat1, file.path("./data", "dat1_clean.csv"), row.names = TRUE)
 
 #-------------------------------------------------------------------------------
 #Descriptives
@@ -98,19 +100,8 @@ tab3 <- dat1 %>%
   mutate(percent.court=freq/sum(freq))
 
 
-#Cases per filing type per day (would be nice if we can set this to month, but I fail to extract the month from year)
-cro(dat1$date, dat1$subject)
-
-tab3 <- cro(dat1$date, dat1$subject)
-
-
-tab1 <- cro(dat1$date, dat1$subject)
-View(tab1)
-
-
-
-
-
+#Cases per filing type per day
+tab4 <- cro(dat1$date, dat1$subject)
 
 
 
@@ -122,7 +113,7 @@ View(tab1)
 #2. Import and clean orbis data
 
 #import data
-orbis <- paste0(getwd(),"/raw_data/orbis_wrds_de.csv")
+orbis <- paste0(getwd(),"/raw_data/orbis_wrds_de.csv.gz")
 dat2 <- read.csv(file = orbis, header = TRUE, fileEncoding = "UTF-8")
 View(dat2)
 
@@ -150,8 +141,6 @@ dat2$closdate <- as.Date(dat2$closdate)
 #remove rows that are complete duplicates of other rows
 dat2 <- dat2 %>% distinct()
 
-#safe clean file -> are we supposed to save this file?
-#write.csv(dat2, file.path("./data", "dat2_clean.csv"), row.names = TRUE)
 
 #label variables
 
@@ -211,6 +200,10 @@ dat2 = apply_labels(dat2,
                     pl = "Profit / Loss for Period"
 )
 
+#safe clean file -> are we supposed to save this file?
+write.csv(dat2, file.path("./data", "dat2_clean.csv"), row.names = TRUE)
+
+
 #-------------------------------------------------------------------------------
 #Descriptives
 
@@ -232,8 +225,4 @@ hist(dat2$year,
      col = 'skyblue3', 
      labels = TRUE,
      )
-
-
-#-------------------------------------------------------------------------------
-# further data analysis of the insolvency data set
 

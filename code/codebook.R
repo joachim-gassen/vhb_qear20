@@ -1,4 +1,15 @@
-Codebook 
+#Codebook 
+#-------------------------------------------------------------------------------
+#used packages
+#install.packages("expss")
+library(tidyverse)
+library(expss)
+library(dplyr)
+library(lubridate)
+
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 #1. Import and clean insolvency data
 
@@ -9,15 +20,16 @@ getwd()
 directory <- setwd("C:/Users/wagne/Desktop/vhb_qear20")
 
 #import data
-insolv <- paste0(getwd(),"/raw_data/insolvency_filings_de_julaug2020_incomplete.csv"
+insolv <- paste0(getwd(),"/raw_data/insolvency_filings_de_julaug2020_incomplete.csv")
 dat1 <- read.csv(file = insolv, header = TRUE, fileEncoding = "UTF-8")
-print(dat1)
+view(dat1)
 
 #check type of data
 typeof(dat1)
 
 #check if variable is a dataframe or not
 is.data.frame(dat1)
+class(dat1)
 
 #dataframe characteristics
 names(dat1) #variable names
@@ -28,18 +40,22 @@ nrow(dat1) #number of rows
 lapply(dat1, class)
 
 #change variable type
-dat1$date <- as.Date(dat1$date)
+dat1$date <- as.Date(dat1$date, ymd)
+dat1$subject <- as.factor(dat1$subject)
 
 #remove rows that are complete duplicates of other rows
-library(dplyr)
 dat1 <- dat1 %>% distinct()
+dup <- duplicated(dat1)
+sum(dup>0)
+
+#checks if cout file number is a unique identifier
+length(unique(dat1$`Court file number`)) == length(dat1$`Court file number`)
 
 #safe clean file
 write.csv(dat1, file.path("./data", "dat1_clean.csv"), row.names = TRUE)
 
 #label variables
-install.packages("expss")
-library(expss)
+
 ##Character variables
 dat1 = apply_labels(dat1,
                     insolvency_court = "Insolvency Court",
@@ -56,12 +72,38 @@ dat1 = apply_labels(dat1,
 #-------------------------------------------------------------------------------
 #Descriptives
 
-#Show different categories within a variable
-Subject <- table(dat1$subject)
+#number of filings after removin duplicates: 9355
+nrow(dat1)
+
+
+#data arranged by subject
+Subject <- table(dat1$subject) ##e.g., new insolvecy cases (Eröffnungen) opened: 897
 Subject
 
-#Cases per filing type per year
+
+tab1 <- dat1 %>% ##does the same as above but prettier
+  group_by(subject) %>%
+  summarize(freq = n())
+
+
+#by filing court
+tab2 <- dat1 %>% 
+  group_by(insolvency_court) %>%
+  summarize(freq = n())
+
+
+#Cases per filing type per day (would be nice if we can set this to month, but I fail to extract the month from year)
 cro(dat1$date, dat1$subject)
+tab1 <- cro(dat1$date, dat1$subject)
+view(tab1)
+
+
+
+
+
+
+
+
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -72,18 +114,22 @@ cro(dat1$date, dat1$subject)
 #import data
 orbis <- paste0(getwd(),"/raw_data/orbis_wrds_de.csv.gz")
 dat2 <- read.csv(file = orbis, header = TRUE, fileEncoding = "UTF-8")
-print(dat2)
+view(dat2)
+
+
 
 #check type of data
 typeof(dat2)
 
 #check if variable is a dataframe or not
 is.data.frame(dat2)
+class(dat2)
 
 #dataframe characteristics
 names(dat2) #variable names
-ncol(dat2) #number of columns
+ncol(dat2) #number of columns 
 nrow(dat2) #number of rows
+
 
 #check variable type
 lapply(dat2, class)
@@ -92,15 +138,13 @@ lapply(dat2, class)
 dat2$closdate <- as.Date(dat2$closdate)
 
 #remove rows that are complete duplicates of other rows
-library(dplyr)
 dat2 <- dat2 %>% distinct()
 
 #safe clean file -> are we supposed to save this file?
 #write.csv(dat2, file.path("./data", "dat2_clean.csv"), row.names = TRUE)
 
 #label variables
-install.packages("expss")
-library(expss)
+
 ##Integer variables
 dat2 = apply_labels(dat2,
                     X = "Line",
@@ -166,3 +210,7 @@ Filetype
 
 #Cases per filing type per year
 cro(dat2$year, dat2$filing_type)
+
+#-------------------------------------------------------------------------------
+# further data analysis of the insolvency data set
+

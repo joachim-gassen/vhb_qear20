@@ -91,11 +91,17 @@ tab2 <- dat1 %>%
   group_by(insolvency_court) %>%
   summarize(freq = n())
 
+#as above but in percent
+tab3 <- dat1 %>% 
+  group_by(insolvency_court) %>%
+  summarize(freq = n())%>%
+  mutate(percent.court=freq/sum(freq))
+
 
 #Cases per filing type per day (would be nice if we can set this to month, but I fail to extract the month from year)
 cro(dat1$date, dat1$subject)
-tab1 <- cro(dat1$date, dat1$subject)
-view(tab1)
+tab3 <- cro(dat1$date, dat1$subject)
+
 
 
 

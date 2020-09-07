@@ -4,7 +4,12 @@
 # This is a small simulation to show the effect of self-selections introducing
 # an implicit collider variable on which you (have to) condition your 
 # analysis
+#install.packages("ggplot2")
+#install.packages("tidyverse")
+#install.packages("colorspace")
 
+library(colorspace)
+library(ggplot2)
 library(tidyverse)
 library(truncnorm)
 

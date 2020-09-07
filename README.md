@@ -10,6 +10,12 @@ This is the repository of the upcoming VHB ProDok Course "Quantitative Empirical
 _If you are here and not a course member, feel free to browse around. Unfortunately, this course works with licensed data that you are most likely not able to access. You can, however, take a look at the code and the slides if you are interested._
 
 
+### Get changes from main repo via remotes
+
+Follow this link: https://garygregory.wordpress.com/2016/11/10/how-to-catch-up-my-git-fork-to-master/ 
+
+Go to "Configuring a git remote for a fork" section and follow it
+
 ### Class project
 
 We will use this repository to collaborate on the class project that will explore German firms that currently file for insolvency. While the main purpose of the project is didactic in the sense that I want you to work on a data exercise to get familiar with a typical empirical workflow, I believe that it is also interesting to look at current insolvency cases from an economic standpoint. First, the corona crisis presents us with an extreme negative liquidity shock that varies predictably in the cross-section. Second, the German regulator has temporarily lifted the requirement for German firms to file for insolvency. Taken together, this provides us with a unique setting that, in the longer run, might provide some interesting quasi-experiments.

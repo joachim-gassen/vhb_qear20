@@ -54,7 +54,7 @@ data_for_course <- df %>%
     name_debtor, domicile_debtor
   ) %>% arrange(date, insolvency_court, court_file_number, subject)
 
-write_csv(data_for_course, "raw_data/insolvency_filings_de_julaug2020_incomplete.csv")
+write_csv(data_for_course, "raw_data/insolvency_filings_de_julaug2020.csv")
 
 wrds <- dbConnect(
   Postgres(),

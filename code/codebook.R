@@ -18,7 +18,7 @@ library(ggplot2)
 getwd()
 
 #set new wd to "vhb_qear20" repository folder
-directory <- setwd("/home/admin_quant/vhb_qear20/")
+directory <- setwd("../vhb_qear20/")
 
 #import data
 insolv <- paste0(getwd(),"/raw_data/insolvency_filings_de_julaug2020_incomplete.csv")
@@ -224,5 +224,6 @@ hist(dat2$year,
      xlim=c(1990,2020),
      col = 'skyblue3', 
      labels = TRUE,
+     axes = TRUE
      )
 

@@ -1,0 +1,209 @@
+---
+title: "Description of insolvency data"
+author: "Joachim Gassen"
+date: "9/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+```
+
+### Data cleaning
+
+First, let's read the data. 
+
+```{r readData}
+insol_raw <- read_csv(
+  "../raw_data/insolvency_filings_de_julaug2020.csv",
+  col_types = cols()
+)
+```
+
+As you have seen, the data contains `r length(which(duplicated(insol_raw)))` duplicates. Let's delete them.
+
+```{r deleteDups}
+insol_de <- insol_raw %>% unique()
+```
+
+Another standard step is to check for missing values.
+
+```{r displayNAs}
+na_vals <- insol_de %>%
+  summarise_all(list( ~ sum(is.na(.))))
+
+nas_df <- tibble(
+  Variable = names(insol_de),
+  `NA count` = t(na_vals)
+)
+
+kable(nas_df) %>% 
+  kable_styling(full_width = FALSE)
+```
+
+
+Two variables contain missing values. One of it is the firm name. As we will need the firm name in the later analysis, we can exclude this observations now. But first, we take a look at it.
+
+```{r ShowNAObs}
+insol_de %>%
+  filter(is.na(name_debtor)) %>%
+  kable() %>%
+  kable_styling()
+```
+
+OK. So we delete this one observation. We can live with missing values in the domicile data.
+
+```{r FinalizeSample}
+insol_de <- insol_de %>%
+  filter(!is.na(name_debtor))
+```
+
+
+### Identifying observations
+
+It is always important to know the primary keys that identify an observation. Most of the time, you will have an expectation which these are from your knowledge about the data domain. Here, this is not that simple. Let's first see whether each firm name is uniquely linked to a court and court file number (court file numbers are assigned by each court individually, so they overlap across courts).
+
+```{r NamesCourtFileNumber}
+unique_firms <- insol_de %>%
+  distinct(name_debtor, .keep_all = TRUE)
+
+unique_firms %>%
+  group_by(insolvency_court, court_file_number) %>%
+  filter(n() > 1) %>%
+  arrange(insolvency_court, court_file_number, name_debtor) %>%
+  kable() %>%
+  kable_styling()
+```
+
+This does not look as if, in principle, firms have unique court file numbers but that the names of firms are written inconsistently. Oh the joys of real life data. We are not fixing this for the time being as we have no clear way no how to pick the "right" firm name. So, can we assume that each court file number has only one filing by subject on a given day? 
+
+```{r FilingsBySubjectAndDay}
+insol_de %>%
+  group_by(date, insolvency_court, court_file_number, subject) %>%
+  filter(n() > 1) %>%
+  arrange(date, insolvency_court, court_file_number, subject) %>%
+  kable() %>%
+  kable_styling()
+```
+
+Even this does not seem to be the case maybe because of inconsistencies in the firm names and firm domiciles. These data items seem to be very messy. This implies that only all variable together identify an observation. OK. Last step: Sorting (a habit of mine, not strictly necessary) and then we can finally prepare some descriptives.
+
+```{r Sortung}
+insol_de <- insol_de %>%
+  arrange(
+    date, insolvency_court, court_file_number, 
+    subject, name_debtor, domicile_debtor
+  )
+```
+
+
+### Observations by filing type
+
+As we have already seen, the data contains different filing types. How are they distributed across the sample?
+
+```{r FilingTypes}
+insol_de %>%
+  group_by(subject) %>%
+  summarise(N = n(), .groups = "drop") %>%
+  rename(`Filing Type` = subject) %>%
+  arrange(`Filing Type`) %>%
+  kable(format.args = list(big.mark = ",")) %>%
+  kable_styling(full_width = FALSE)
+```
+
+
+### Observations over time
+
+How are the observations distributed over the period July/August?
+
+```{r PlotOverTime}
+insol_de %>%
+  group_by(date) %>%
+  summarise(N = n(), .groups = "drop") %>%
+  ggplot(aes(x = date, y = N)) +
+  geom_point() +
+  theme_minimal()
+```
+
+
+### Patterns over type and filing type
+
+Nothing special here (besides that there are very few if any filings over weekends). One last check: Does the time pattern vary over filing types? We will concentrate on openings and closings for this analysis.
+
+```{r PlotOverTimeSubject}
+insol_de %>%
+  filter(
+    subject == "Entscheidungen im Verfahren" |
+      subject == "Eröffnungen"
+  ) %>%
+  group_by(date, subject) %>%
+  summarise(N = n(), .groups = "drop") %>%
+  ggplot(aes(x = date, y = N, color = subject)) +
+  geom_point() +
+  theme_minimal()
+```
+
+Interesting. It seems as if insolvency opening are clustered around months ends.
+
+### Duration of insolvency proceedings
+
+As you might have noticed, the court filing numbers seem to contain a double digit (behind the slash) to indicate the calender year where the insolvency case was started. Let's verify this by looking at the opening filings.
+
+``` {r ExploreFilingNumbers}
+insol_de %>%
+  filter(subject == "Eröffnungen") %>%
+  select(court_file_number) %>%
+  head(10) %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+```
+
+OK. We can use this to get a rough estimate of how long it takes to settle an 'Regelverfahren' insolvency case.
+
+``` {r CalcDuration}
+closed_cases <- insol_de %>%
+  filter(subject == "Entscheidungen im Verfahren") %>%
+  mutate(
+    start = as.numeric(str_extract(court_file_number, "(?<=/)\\d{2}")),
+    duration = ifelse(start > 20, 2020 - (1900 + start), 20 - start)
+  ) %>%
+  select(insolvency_court, court_file_number, duration)
+
+ggplot(closed_cases) + 
+  geom_histogram(aes(x = duration), bins = 21) +
+  theme_minimal()
+```
+
+
+# Cases by court
+
+Just for fun and giggles: How do the completed cases distribute across courts?
+
+``` {r ClosedCasesByCourt}
+closed_cases %>%
+  group_by(insolvency_court) %>%
+  summarise(N = n(), .groups = "drop") %>%
+  arrange(-N) %>%
+  rename(`Insolvency court` = insolvency_court) %>%
+  head(10) %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)  
+```
+
+And for the busiest courts: Does the duration vary across courts?
+
+``` {r DurationByCourt}
+closed_cases %>%
+  group_by(insolvency_court) %>%
+  filter(n() > 100) %>%
+  ggplot(aes(group = insolvency_court)) +
+  geom_boxplot(aes(x = insolvency_court, y = duration)) + 
+  labs(
+    x = "Insolvency court", 
+    y = "Duration"
+  ) +
+  theme_minimal()
+```

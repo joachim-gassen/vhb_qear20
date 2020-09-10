@@ -9,38 +9,42 @@ library(tidyverse)
 library(knitr)
 library(kableExtra)
 library(dplyr)
+library(DBI)
+library(dbplyr)
+library(odbc)
+
 ```
 
 
 ### Data cleaning - building on Joachim's example
 
-Reading insolvency data in August and September where subject is "Eröffnungen"
 
+```{r dbconnect}
+
+#SQL connection string
+
+con <- dbConnect(odbc::odbc(), .connection_string = "Driver={SQL Server};Server=tcp:vhb20.database.windows.net,1433;
+Database=businessdata;
+Uid=quant_admin;
+Pwd=Deloitte1234;
+Encrypt=yes;
+TrustServerCertificate=no;
+Connection Timeout=30", timeout = 10)
+
+```
+
+Reading insolvency data in August and September where subject is "Eröffnungen" directly from the database
 ```{r readData}
 
-#orbis_raw <- read.csv(
-#  "../raw_data/orbis_wrds_de.csv", 
-#  header = TRUE,
-#  fileEncoding = "UTF-8"
-#)
+#Don't change the order here due to error -> https://github.com/r-dbi/odbc/issues/86
 
-orbis_raw_top1000 <- read.csv(
-  "../raw_data/orbis_wrds_de.csv", 
-  header = TRUE,
-  fileEncoding = "UTF-8",
-  nrows = 100000
-)
+MergedDF_all <- dbGetQuery(con, "SELECT X, date, year, closdate, insolvency_court, court_file_number, subject, name_debtor, domicile_debtor, ctryiso, bvdid, name_internat , name_native , major_sector , nace2_main_section , naceccod2 , ussicpcod , category_of_company , status_str , legalfrm , indepind , listed , conscode , filing_type , accpractice , audstatus , source , fias , cuas , stok , debt , ocas , cash , toas , shfd , ncli , culi , loan , cred , ocli , tshf , empl , opre , turn , cost , fipl , taxa , exex , pl
+ FROM orbis_insolvency_merge")
 
+#SELECT * FROM dbo.insolvency FULL OUTER JOIN dbo.orbis ON dbo.insolvency.name_debtor = dbo.orbis.name_native WHERE (dbo.insolvency.subject = 'Eröffnungen') AND (dbo.insolvency.date >= '2020-08-01') AND (dbo.insolvency.date <= '2020-09-30')
 
-insol_raw <- read.csv(
-  "../raw_data/insolvency_filings_de_julaug2020.csv",
-  header = TRUE, 
-  fileEncoding = "UTF-8"
-)
+MergedDF_filtered <- dbGetQuery(con, "SELECT X, date, year, closdate, insolvency_court, court_file_number, subject, name_debtor, domicile_debtor, ctryiso, bvdid, name_internat , name_native , major_sector , nace2_main_section , naceccod2 , ussicpcod , category_of_company , status_str , legalfrm , indepind , listed , conscode , filing_type , accpractice , audstatus , source , fias , cuas , stok , debt , ocas , cash , toas , shfd , ncli , culi , loan , cred , ocli , tshf , empl , opre , turn , cost , fipl , taxa , exex , pl FROM orbis_insolvency_merge_filtered")
 
-insol_filter <- insol_raw %>%
-                  select(date,insolvency_court,court_file_number,subject,name_debtor,domicile_debtor) %>%
-                  filter(subject == "Eröffnungen" & date >= "2020-08-01" & date <= "2020-09-30")
 ```
 
 Deleting duplicates
@@ -69,7 +73,7 @@ kable(nas_df) %>%
 Merging data 
 ```{r datamerge}
 
-top1000rightjoin_data <- merge(x = insol_de, y = orbis_raw_top1000, by.x = "name_debtor", by.y = "name_native", all=TRUE)
+
 
 #Need to count the number of distinct matches
 

@@ -1,5 +1,5 @@
 ---
-title: "vhb"
+title: "Group 2 - merge data sets"
 output: html_document
 ---
 
@@ -18,10 +18,17 @@ Reading insolvency data in August and September where subject is "Eröffnungen"
 
 ```{r readData}
 
-orbis_raw <- read.csv(
+#orbis_raw <- read.csv(
+#  "../raw_data/orbis_wrds_de.csv", 
+#  header = TRUE,
+#  fileEncoding = "UTF-8"
+#)
+
+orbis_raw_top1000 <- read.csv(
   "../raw_data/orbis_wrds_de.csv", 
   header = TRUE,
-  fileEncoding = "UTF-8"
+  fileEncoding = "UTF-8",
+  nrows = 100000
 )
 
 
@@ -62,7 +69,19 @@ kable(nas_df) %>%
 Merging data 
 ```{r datamerge}
 
-joineddf <- merge(x = orbis_raw, y = insol_de, by.x = "name_native", by.y = "name_debtor")
+top1000rightjoin_data <- merge(x = insol_de, y = orbis_raw_top1000, by.x = "name_debtor", by.y = "name_native", all=TRUE)
+
+#Need to count the number of distinct matches
+
+#Run a fuzzy join
+
+
+#Define a set of informative variables and compare the insolvent firms with the others
+
+
+#examples: total asset, calc profit., firm age, size, legalfrm, audit (for Joachim's sake)
+
+
 ```
 
 

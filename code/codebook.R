@@ -113,7 +113,7 @@ tab4 <- cro(dat1$date, dat1$subject)
 #2. Import and clean orbis data
 
 #import data
-orbis <- paste0(getwd(),"/raw_data/orbis_wrds_de.csv.gz")
+orbis <- paste0(getwd(),"/raw_data/orbis_wrds_de.csv")
 dat2 <- read.csv(file = orbis, header = TRUE, fileEncoding = "UTF-8")
 View(dat2)
 
@@ -199,6 +199,12 @@ dat2 = apply_labels(dat2,
                     exex = "Extraordinary and other Expenses",
                     pl = "Profit / Loss for Period"
 )
+
+#Generate new variables
+dat2$expe <- rowSums(dat2[,c("cost", "fipl", "taxa", "exex")], na.rm = TRUE)
+dat2$neti <- dat2$turn - dat2$expe
+dat2$roa <- dat2$neti / dat2$toas
+dat2$astu <- dat2$opre / dat2$toas
 
 #safe clean file -> are we supposed to save this file?
 write.csv(dat2, file.path("./data", "dat2_clean.csv"), row.names = TRUE)

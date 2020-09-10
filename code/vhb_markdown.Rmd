@@ -88,11 +88,12 @@ top1000rightjoin_data <- merge(x = insol_de, y = orbis_raw_top1000, by.x = "name
 
 Generate new variables
 ```{r newvars}
+attach(top1000rightjoin_data)
 top1000rightjoin_data$expe <- rowSums(top1000rightjoin_data[,c("cost", "fipl", "taxa", "exex")], na.rm = TRUE)
 top1000rightjoin_data$neti <- top1000rightjoin_data$turn - top1000rightjoin_data$expe
 top1000rightjoin_data$roa <- top1000rightjoin_data$neti / top1000rightjoin_data$toas
 top1000rightjoin_data$astu <- top1000rightjoin_data$opre / top1000rightjoin_data$toas
-
+detach(top1000rightjoin_data)
 ```
 
 
@@ -133,7 +134,9 @@ Numerical data analysis
 top1000rightjoin_data %>%
   group_by(subject) %>%
   summarise(meantoas = mean(toas, na.rm = TRUE),
-            meanempl = mean(empl, na.rm = TRUE))
+            meanempl = mean(empl, na.rm = TRUE),
+            meanroa = mean(roa, na.rm = TRUE),
+            meanastu = mean(astu, na.rm = TRUE))
 
 ```
 

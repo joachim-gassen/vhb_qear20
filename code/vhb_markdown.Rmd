@@ -1,0 +1,71 @@
+---
+title: "vhb"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(dplyr)
+```
+
+
+### Data cleaning - building on Joachim's example
+
+Reading insolvency data in August and September where subject is "Eröffnungen"
+
+```{r readData}
+
+orbis_raw <- read.csv(
+  "../raw_data/orbis_wrds_de.csv", 
+  header = TRUE,
+  fileEncoding = "UTF-8"
+)
+
+
+insol_raw <- read.csv(
+  "../raw_data/insolvency_filings_de_julaug2020.csv",
+  header = TRUE, 
+  fileEncoding = "UTF-8"
+)
+
+insol_filter <- insol_raw %>%
+                  select(date,insolvency_court,court_file_number,subject,name_debtor,domicile_debtor) %>%
+                  filter(subject == "Eröffnungen" & date >= "2020-08-01" & date <= "2020-09-30")
+```
+
+Deleting duplicates
+
+```{r deleteDups}
+insol_de <- insol_filter %>% unique()
+```
+
+Missing values check
+
+```{r displayNAs}
+na_vals <- insol_de %>%
+  summarise_all(list( ~ sum(is.na(.))))
+
+nas_df <- tibble(
+  Variable = names(insol_de),
+  `NA count` = t(na_vals)
+)
+
+kable(nas_df) %>% 
+  kable_styling(full_width = FALSE)
+```
+
+
+
+Merging data 
+```{r datamerge}
+
+joineddf <- merge(x = orbis_raw, y = insol_de, by.x = "name_native", by.y = "name_debtor")
+```
+
+
+
+
+

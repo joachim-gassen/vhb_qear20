@@ -10,6 +10,7 @@ library(knitr)
 library(kableExtra)
 library(dplyr)
 library('fastDummies')
+library(psych)
 ```
 
 
@@ -89,6 +90,15 @@ top1000rightjoin_data <- merge(x = insol_de, y = orbis_raw_top1000, by.x = "name
 Data analysis
 ```{r datanalysis}
 
+top1000rightjoin_data %>%
+  group_by(subject) %>%
+  summarise(N = n(), .groups = "drop") %>%
+  rename(`Insolvency Cases` = subject) %>%
+  arrange(`Insolvency Cases`) %>%
+  kable(format.args = list(big.mark = ",")) %>%
+  kable_styling(full_width = FALSE)
+
+
 top1000rightjoin_data <- dummy_cols(top1000rightjoin_data, select_columns = 'subject')
 top1000rightjoin_data$subject_Eröffnungen[is.na(top1000rightjoin_data$subject_Eröffnungen)] <- 0
 top1000rightjoin_data$subject_NA[is.na(top1000rightjoin_data$subject_NA)] <- 0
@@ -96,9 +106,14 @@ top1000rightjoin_data$subject_NA[is.na(top1000rightjoin_data$subject_NA)] <- 0
 
 
 top1000rightjoin_data %>%
-  group_by(legalfrm, subject_NA) %>%
+  group_by(legalfrm, subject) %>%
   summarise(N = n(), .groups = "drop")
 
+
+top1000rightjoin_data %>% 
+  group_by(legalfrm) %>%
+  count(subject)
+  
 ```
 
 

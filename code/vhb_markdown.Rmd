@@ -9,6 +9,7 @@ library(tidyverse)
 library(knitr)
 library(kableExtra)
 library(dplyr)
+library('fastDummies')
 ```
 
 
@@ -25,7 +26,7 @@ Reading insolvency data in August and September where subject is "Eröffnungen"
 #)
 
 orbis_raw_top1000 <- read.csv(
-  "../raw_data/orbis_wrds_de.csv", 
+  "../raw_data/orbis_wrds_de.csv.gz", 
   header = TRUE,
   fileEncoding = "UTF-8",
   nrows = 100000
@@ -85,6 +86,19 @@ top1000rightjoin_data <- merge(x = insol_de, y = orbis_raw_top1000, by.x = "name
 ```
 
 
+Data analysis
+```{r datanalysis}
 
+top1000rightjoin_data <- dummy_cols(top1000rightjoin_data, select_columns = 'subject')
+top1000rightjoin_data$subject_Eröffnungen[is.na(top1000rightjoin_data$subject_Eröffnungen)] <- 0
+top1000rightjoin_data$subject_NA[is.na(top1000rightjoin_data$subject_NA)] <- 0
+
+
+
+top1000rightjoin_data %>%
+  group_by(legalfrm, subject_NA) %>%
+  summarise(N = n(), .groups = "drop")
+
+```
 
 

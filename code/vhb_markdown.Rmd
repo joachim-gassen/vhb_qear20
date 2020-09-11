@@ -9,10 +9,15 @@ library(tidyverse)
 library(knitr)
 library(kableExtra)
 library(dplyr)
+<<<<<<< HEAD
+library('fastDummies')
+library(psych)
+=======
 library(DBI)
 library(dbplyr)
 library(odbc)
 
+>>>>>>> 8996ede5fa2c027c302febc1fc6d85a70602ea48
 ```
 
 
@@ -35,6 +40,19 @@ Connection Timeout=30", timeout = 10)
 
 Reading insolvency data in August and September where subject is "Eröffnungen" directly from the database
 ```{r readData}
+
+#orbis_raw <- read.csv(
+#  "../raw_data/orbis_wrds_de.csv", 
+#  header = TRUE,
+#  fileEncoding = "UTF-8"
+#)
+
+orbis_raw_top1000 <- read.csv(
+  "../raw_data/orbis_wrds_de.csv.gz", 
+  header = TRUE,
+  fileEncoding = "UTF-8",
+  nrows = 100000
+)
 
 #Don't change the order here due to error -> https://github.com/r-dbi/odbc/issues/86
 
@@ -100,6 +118,8 @@ lapply(MergedDF_all2017, class)
 ```
 
 
+<<<<<<< HEAD
+=======
 Generate new variables
 ```{r newvars}
 attach(MergedDF_all2017)
@@ -110,13 +130,42 @@ MergedDF_all2017$astu <- MergedDF_all2017$opre / MergedDF_all2017$toas
 detach(MergedDF_all2017)
 ```
 
+>>>>>>> 8996ede5fa2c027c302febc1fc6d85a70602ea48
 Data analysis
 ```{r datanalysis}
 MergedDF_all2017 <- dummy_cols(MergedDF_all2017, select_columns = 'subject')
 MergedDF_all2017$subject_Eröffnungen[is.na(MergedDF_all2017$subject_Eröffnungen)] <- 0
 MergedDF_all2017$subject_NA[is.na(MergedDF_all2017$subject_NA)] <- 0
 
+<<<<<<< HEAD
 MergedDF_all2017 %>%
+=======
+top1000rightjoin_data %>%
+  group_by(subject) %>%
+  summarise(N = n(), .groups = "drop") %>%
+  rename(`Insolvency Cases` = subject) %>%
+  arrange(`Insolvency Cases`) %>%
+  kable(format.args = list(big.mark = ",")) %>%
+  kable_styling(full_width = FALSE)
+
+
+top1000rightjoin_data <- dummy_cols(top1000rightjoin_data, select_columns = 'subject')
+top1000rightjoin_data$subject_Eröffnungen[is.na(top1000rightjoin_data$subject_Eröffnungen)] <- 0
+top1000rightjoin_data$subject_NA[is.na(top1000rightjoin_data$subject_NA)] <- 0
+
+
+
+top1000rightjoin_data %>%
+  group_by(legalfrm, subject) %>%
+  summarise(N = n(), .groups = "drop")
+
+
+top1000rightjoin_data %>% 
+  group_by(legalfrm) %>%
+  count(subject)
+  
+insol_de %>%
+>>>>>>> b31396a22bbf0eba72120e41de650f458a4ea86f
   group_by(subject, legalfrm) %>%
   summarise(N = n(), .groups = "drop")
 ```

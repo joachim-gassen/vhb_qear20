@@ -38,19 +38,21 @@ Reading insolvency data in August and September where subject is "Eröffnungen" 
 
 #Don't change the order here due to error -> https://github.com/r-dbi/odbc/issues/86
 
-MergedDF_all <- dbGetQuery(con, "SELECT X, date, year, closdate, insolvency_court, court_file_number, subject, name_debtor, domicile_debtor, ctryiso, bvdid, name_internat , name_native , major_sector , nace2_main_section , naceccod2 , ussicpcod , category_of_company , status_str , legalfrm , indepind , listed , conscode , filing_type , accpractice , audstatus , source , fias , cuas , stok , debt , ocas , cash , toas , shfd , ncli , culi , loan , cred , ocli , tshf , empl , opre , turn , cost , fipl , taxa , exex , pl
+#SELECT * FROM dbo.insolvency FULL OUTER JOIN dbo.orbis ON dbo.insolvency.name_debtor = dbo.orbis.name_native WHERE (dbo.orbis.year >= 2017
+
+MergedDF_all2017 <- dbGetQuery(con, "SELECT column1, date, year, closdate, insolvency_court, court_file_number, subject, name_debtor, domicile_debtor, ctryiso, bvdid, name_internat , name_native , major_sector , nace2_main_section , naceccod2 , ussicpcod , category_of_company , status_str , legalfrm , indepind , listed , conscode , filing_type , accpractice , audstatus , source , fias , cuas , stok , debt , ocas , cash , toas , shfd , ncli , culi , loan , cred , ocli , tshf , empl , opre , turn , cost , fipl , taxa , exex , pl
  FROM orbis_insolvency_merge")
 
 #SELECT * FROM dbo.insolvency FULL OUTER JOIN dbo.orbis ON dbo.insolvency.name_debtor = dbo.orbis.name_native WHERE (dbo.insolvency.subject = 'Eröffnungen') AND (dbo.insolvency.date >= '2020-08-01') AND (dbo.insolvency.date <= '2020-09-30')
 
-MergedDF_filtered <- dbGetQuery(con, "SELECT X, date, year, closdate, insolvency_court, court_file_number, subject, name_debtor, domicile_debtor, ctryiso, bvdid, name_internat , name_native , major_sector , nace2_main_section , naceccod2 , ussicpcod , category_of_company , status_str , legalfrm , indepind , listed , conscode , filing_type , accpractice , audstatus , source , fias , cuas , stok , debt , ocas , cash , toas , shfd , ncli , culi , loan , cred , ocli , tshf , empl , opre , turn , cost , fipl , taxa , exex , pl FROM orbis_insolvency_merge_filtered")
+MergedDF_filtered <- dbGetQuery(con, "SELECT column1, date, year, closdate, insolvency_court, court_file_number, subject, name_debtor, domicile_debtor, ctryiso, bvdid, name_internat , name_native , major_sector , nace2_main_section , naceccod2 , ussicpcod , category_of_company , status_str , legalfrm , indepind , listed , conscode , filing_type , accpractice , audstatus , source , fias , cuas , stok , debt , ocas , cash , toas , shfd , ncli , culi , loan , cred , ocli , tshf , empl , opre , turn , cost , fipl , taxa , exex , pl FROM orbis_insolvency_merge_filtered")
 
 ```
 
 Deleting duplicates
 
 ```{r deleteDups}
-insol_de <- insol_filter %>% unique()
+insol_de <- MergedDF_all2017 %>% unique()
 ```
 
 Missing values check
@@ -68,25 +70,57 @@ kable(nas_df) %>%
   kable_styling(full_width = FALSE)
 ```
 
+```{r convert data types}
 
-
-Merging data 
-```{r datamerge}
-
-
-
-#Need to count the number of distinct matches
-
-#Run a fuzzy join
-
-
-#Define a set of informative variables and compare the insolvent firms with the others
-
-
-#examples: total asset, calc profit., firm age, size, legalfrm, audit (for Joachim's sake)
-
+#TODO - convert selected column into numeric
 
 ```
+
+
+Generate new variables
+```{r newvars}
+attach(insol_de)
+insol_de$expe <- rowSums(insol_de[,c("cost", "fipl", "taxa", "exex")], na.rm = TRUE)
+insol_de$neti <- insol_de$turn - insol_de$expe
+insol_de$roa <- insol_de$neti / insol_de$toas
+insol_de$astu <- insol_de$opre / insol_de$toas
+detach(insol_de)
+```
+
+Data analysis
+```{r datanalysis}
+insol_de <- dummy_cols(insol_de, select_columns = 'subject')
+insol_de$subject_Eröffnungen[is.na(insol_de$subject_Eröffnungen)] <- 0
+insol_de$subject_NA[is.na(insol_de$subject_NA)] <- 0
+
+insol_de %>%
+  group_by(subject, legalfrm) %>%
+  summarise(N = n(), .groups = "drop")
+```
+
+
+Data analysis
+```{r datanalysis}
+insol_de <- dummy_cols(insol_de, select_columns = 'subject')
+insol_de$subject_Eröffnungen[is.na(insol_de$subject_Eröffnungen)] <- 0
+insol_de$subject_NA[is.na(insol_de$subject_NA)] <- 0
+
+insol_de %>%
+  group_by(subject, major_sector) %>%
+  summarise(N = n(), .groups = "drop")
+```
+
+
+Numerical data analysis
+```{r numdataanalysis}
+insol_de %>%
+  group_by(subject) %>%
+  summarise(meantoas = mean(toas, na.rm = TRUE),
+            meanempl = mean(empl, na.rm = TRUE),
+            meanroa = mean(roa, na.rm = TRUE),
+            meanastu = mean(astu, na.rm = TRUE))
+```
+
 
 
 

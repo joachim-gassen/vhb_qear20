@@ -73,27 +73,50 @@ kable(nas_df) %>%
 ```{r convert data types}
 
 #TODO - convert selected column into numeric
+MergedDF_all2017$fias <- as.numeric(MergedDF_all2017$fias)
+MergedDF_all2017$cuas <- as.numeric(MergedDF_all2017$cuas)
+MergedDF_all2017$stok <- as.numeric(MergedDF_all2017$stok)
+MergedDF_all2017$debt <- as.numeric(MergedDF_all2017$debt)
+MergedDF_all2017$ocas <- as.numeric(MergedDF_all2017$ocas)
+MergedDF_all2017$cash <- as.numeric(MergedDF_all2017$cash)
+MergedDF_all2017$toas <- as.numeric(MergedDF_all2017$toas)
+MergedDF_all2017$shfd <- as.numeric(MergedDF_all2017$shfd)
+MergedDF_all2017$ncli <- as.numeric(MergedDF_all2017$ncli)
+MergedDF_all2017$culi <- as.numeric(MergedDF_all2017$culi)
+MergedDF_all2017$loan <- as.numeric(MergedDF_all2017$loan)
+MergedDF_all2017$cred <- as.numeric(MergedDF_all2017$cred)
+MergedDF_all2017$ocli <- as.numeric(MergedDF_all2017$ocli)
+MergedDF_all2017$tshf <- as.numeric(MergedDF_all2017$tshf)
+MergedDF_all2017$empl <- as.numeric(MergedDF_all2017$empl)
+MergedDF_all2017$opre <- as.numeric(MergedDF_all2017$opre)
+MergedDF_all2017$turn <- as.numeric(MergedDF_all2017$turn)
+MergedDF_all2017$cost <- as.numeric(MergedDF_all2017$cost)
+MergedDF_all2017$fipl <- as.numeric(MergedDF_all2017$fipl)
+MergedDF_all2017$taxa <- as.numeric(MergedDF_all2017$taxa)
+MergedDF_all2017$exex <- as.numeric(MergedDF_all2017$exex)
+MergedDF_all2017$pl <- as.numeric(MergedDF_all2017$pl)
+lapply(MergedDF_all2017, class)
 
 ```
 
 
 Generate new variables
 ```{r newvars}
-attach(insol_de)
-insol_de$expe <- rowSums(insol_de[,c("cost", "fipl", "taxa", "exex")], na.rm = TRUE)
-insol_de$neti <- insol_de$turn - insol_de$expe
-insol_de$roa <- insol_de$neti / insol_de$toas
-insol_de$astu <- insol_de$opre / insol_de$toas
-detach(insol_de)
+attach(MergedDF_all2017)
+MergedDF_all2017$expe <- rowSums(MergedDF_all2017[,c("cost", "fipl", "taxa", "exex")], na.rm = TRUE)
+MergedDF_all2017$neti <- MergedDF_all2017$turn - MergedDF_all2017$expe
+MergedDF_all2017$roa <- MergedDF_all2017$neti / MergedDF_all2017$toas
+MergedDF_all2017$astu <- MergedDF_all2017$opre / MergedDF_all2017$toas
+detach(MergedDF_all2017)
 ```
 
 Data analysis
 ```{r datanalysis}
-insol_de <- dummy_cols(insol_de, select_columns = 'subject')
-insol_de$subject_Eröffnungen[is.na(insol_de$subject_Eröffnungen)] <- 0
-insol_de$subject_NA[is.na(insol_de$subject_NA)] <- 0
+MergedDF_all2017 <- dummy_cols(MergedDF_all2017, select_columns = 'subject')
+MergedDF_all2017$subject_Eröffnungen[is.na(MergedDF_all2017$subject_Eröffnungen)] <- 0
+MergedDF_all2017$subject_NA[is.na(MergedDF_all2017$subject_NA)] <- 0
 
-insol_de %>%
+MergedDF_all2017 %>%
   group_by(subject, legalfrm) %>%
   summarise(N = n(), .groups = "drop")
 ```
@@ -101,11 +124,11 @@ insol_de %>%
 
 Data analysis
 ```{r datanalysis}
-insol_de <- dummy_cols(insol_de, select_columns = 'subject')
-insol_de$subject_Eröffnungen[is.na(insol_de$subject_Eröffnungen)] <- 0
-insol_de$subject_NA[is.na(insol_de$subject_NA)] <- 0
+MergedDF_all2017 <- dummy_cols(MergedDF_all2017, select_columns = 'subject')
+MergedDF_all2017$subject_Eröffnungen[is.na(MergedDF_all2017$subject_Eröffnungen)] <- 0
+MergedDF_all2017$subject_NA[is.na(MergedDF_all2017$subject_NA)] <- 0
 
-insol_de %>%
+MergedDF_all2017 %>%
   group_by(subject, major_sector) %>%
   summarise(N = n(), .groups = "drop")
 ```
@@ -113,7 +136,7 @@ insol_de %>%
 
 Numerical data analysis
 ```{r numdataanalysis}
-insol_de %>%
+MergedDF_all2017 %>%
   group_by(subject) %>%
   summarise(meantoas = mean(toas, na.rm = TRUE),
             meanempl = mean(empl, na.rm = TRUE),

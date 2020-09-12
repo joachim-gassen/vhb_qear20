@@ -6,27 +6,81 @@ output: html_document
 ---
   
 ```{r setup, include=FALSE}
-list.of.packages <- c("rmarkdown", "tidyverse", "knitr", "kableExtra")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
-
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 library(tidyverse)
 library(knitr)
 library(kableExtra)
+library(stringr)
+
+Sys.setlocale("LC_ALL", "UTF-8")
 ```
 
 ### Data cleaning
-First, let's read the data. 
+First, read the Insolvecy and Orbis data. 
 
-```{r readData}
+```{r readInsol}
 insol_raw <- read_csv(
-"../raw_data/insolvency_filings_de_julaug2020.csv",
-col_types = cols()
-) 
-
-orbis_raw <- read_csv(
-"../raw_data/orbis_wrds_de.csv",
-col_types = cols(), n_max = 50000
+  "../raw_data/insolvency_filings_de_julaug2020.csv",
+  col_types = cols(), locale = readr::locale(encoding = "UTF-8")
 )
 ```
+
+```{r readOrbis}
+orbis_raw <- read_csv(
+  "../raw_data/orbis_wrds_de.csv",
+  col_types = cols(), n_max = 1000
+)
+```
+The Insolvency (Orbis) dataset contains `r length(which(duplicated(insol_raw)))` (`r length(which(duplicated(orbis_raw)))`) duplicates. Let's delete them.
+
+```{r deleteDups, results = "hide"}
+insol_de <- insol_raw %>% unique()
+orbis_de <- orbis_raw %>% unique()
+```
+
+
+For our analysis we want to have a closer look at firms that filed for insolvency (subject == Eröffnungen):
+```{r getOpenings, results = "hide"}
+insol_open_de <- insol_de[insol_de$subject == "Eröffnungen",]
+```
+
+
+Fuzzy match based on international names excluding umlauts
+```{r replaceUmplauts, results = "hide"}
+internat_name <- insol_open_de$name_debtor
+internat_name <- str_replace(internat_name, "Ä","Ae")
+internat_name <- str_replace(internat_name, "Ö","Oe")
+internat_name <- str_replace(internat_name, "Ü","Ue")
+internat_name <- str_replace(internat_name, "ä","ae")
+internat_name <- str_replace(internat_name, "ö","oe")
+internat_name <- str_replace(internat_name, "ü","ue")
+```
+
+
+Try to find a match for each insolvent company in the orbis universe
+```{r fuzzyMatch, results = "hide"}
+insol_filers <- data_frame()
+pb <- txtProgressBar(min = 0, max = length(internat_name), style = 3)
+for(i in 1:length(internat_name)){
+  
+  rown <- "NA"
+  #Look for exact match
+  if(!internat_name==""){
+  rown <- which(orbis_de$name_internat == internat_name[i])
+  
+  #Fuzzy match if noch exact match is found
+  if(!length(rown)>0){
+  rown <- agrep(internat_name[i], orbis_de$name_internat)
+  }
+  
+  #If there is a match save it
+  if(length(rown)>0){
+    insol_filers <- rbind(insol_filers, orbis_de[rown,])
+  }
+  }
+  setTxtProgressBar(pb, i)
+}
+```
+
+The methodology identified orbis data for `r length(unique(insol_filers$bvdid))` of the `r length(internat_name)` insolvent companies.
+

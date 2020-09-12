@@ -1,0 +1,32 @@
+---
+title: "Group assignment #3"
+author: "Tanja Dreiser, Jonas Materna and Dorothee Ohlrogge"
+date: "9/13/2020"
+output: html_document
+---
+  
+```{r setup, include=FALSE}
+list.of.packages <- c("rmarkdown", "tidyverse", "knitr", "kableExtra")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+```
+
+### Data cleaning
+First, let's read the data. 
+
+```{r readData}
+insol_raw <- read_csv(
+"../raw_data/insolvency_filings_de_julaug2020.csv",
+col_types = cols()
+) 
+
+orbis_raw <- read_csv(
+"../raw_data/orbis_wrds_de.csv",
+col_types = cols(), n_max = 50000
+)
+```

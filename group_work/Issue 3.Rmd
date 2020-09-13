@@ -1,0 +1,278 @@
+---
+title: "Group assignment #3"
+author: "Tanja Dreiser, Jonas Materna and Dorothee Ohlrogge"
+date: "9/13/2020"
+output: html_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(stringr)
+library(stringdist)
+library(ggplot2)
+library(expss)
+
+Sys.setlocale("LC_ALL", "UTF-8")
+```
+
+### Data cleaning
+First, read the Insolvecy and Orbis data. 
+
+```{r readInsol}
+insol_raw <- read_csv(
+  "../raw_data/insolvency_filings_de_julaug2020.csv",
+  col_types = cols(), locale = readr::locale(encoding = "UTF-8")
+)
+```
+
+```{r readOrbis}
+orbis_raw <- read_csv(
+  "../raw_data/orbis_wrds_de.csv",
+  col_types = cols()
+)
+```
+The Insolvency (Orbis) dataset contains `r length(which(duplicated(insol_raw)))` (`r length(which(duplicated(orbis_raw)))`) duplicates. Let's delete them.
+
+```{r deleteDups, results = "hide"}
+insol_de <- insol_raw %>% unique()
+orbis_de <- orbis_raw %>% unique()
+```
+
+
+For our analysis we want to have a closer look at firms that filed for insolvency (subject == Eröffnungen):
+
+```{r getOpenings, results = "hide"}
+insol_open_de <- insol_de[insol_de$subject == "Eröffnungen",]
+```
+
+
+Fuzzy match based on international names excluding umlauts.
+
+```{r replaceUmplauts, results = "hide"}
+internat_name <- insol_open_de$name_debtor
+internat_name <- str_replace(internat_name, "Ä","Ae")
+internat_name <- str_replace(internat_name, "Ö","Oe")
+internat_name <- str_replace(internat_name, "Ü","Ue")
+internat_name <- str_replace(internat_name, "ä","ae")
+internat_name <- str_replace(internat_name, "ö","oe")
+internat_name <- str_replace(internat_name, "ü","ue")
+
+#Remove duplicates and the "(haftungsbeschraenkt)" tag
+internat_name <- unique(internat_name)
+internat_name <- str_replace(internat_name, "\\(haftungsbeschraenkt\\)", "")
+
+```
+
+### Merging the Data
+Try to find a match for each insolvent company in the orbis universe. To do this the Damerau-Levenshtein distance is applied.
+
+```{r fuzzyMatchFunction, results = "hide"}
+ClosestMatch = function(string, stringVector, maxDist){
+  
+  match <- stringVector[amatch(string, stringVector, 
+                               method = "dl",
+                               maxDist=maxDist)]
+  
+  if(!is.na(match)){
+    which(stringVector == match)
+  }
+}
+```
+
+
+The restrictiveness of the matching is based on the length of the firm name. We are super restrictive for short names.
+
+```{r fuzzyMatch, results = "hide"}
+
+insol_filers <- data_frame()
+pb <- txtProgressBar(min = 0, max = length(internat_name), style = 3)
+insol_filer <- rep(0, length(orbis_de$X1))
+for(i in 1:length(internat_name)){
+  
+  rowno <- "NA"
+  #Look for exact match
+  rowno <- which(orbis_de$name_internat == internat_name[i])
+
+  if(!length(rowno)>0){
+    
+    if(nchar(internat_name[i])<=15){
+      rowno <- ClosestMatch(internat_name[i], orbis_de$name_internat, 0.1 )
+    }
+    
+   if(nchar(internat_name[i])>15 && nchar(internat_name[i])<=30 ){
+      rowno <- ClosestMatch(internat_name[i], orbis_de$name_internat, 2 )
+   }
+    
+   if(nchar(internat_name[i])>30){
+      rowno <- ClosestMatch(internat_name[i], orbis_de$name_internat, 4 )
+   }
+    
+
+  }
+    
+    #If there is a match save it
+    if(length(rowno)>0){
+      insol_filers <- rbind(insol_filers, orbis_de[rowno,])
+      insol_filer[rowno] <- 1
+    }
+  setTxtProgressBar(pb, i)
+}
+```
+
+### Analysis
+Now analyse how the insolvent firms differ from the unisverse of firms.
+
+Calculate the ratio of current liabilities to total liabilities.
+
+```{r CLTL, results = "hide"}
+CLTL_universe <- orbis_de$culi/(orbis_de$culi + orbis_de$ncli)
+CLTL_insol    <- insol_filers$culi/(insol_filers$culi + insol_filers$ncli)
+
+CLTL_universe_mean <- aggregate(CLTL_universe, list(orbis_de$year), function(x) mean(x, na.rm=TRUE))
+CLTL_insol_mean    <- aggregate(CLTL_insol, list(insol_filers$year), function(x) mean(x, na.rm=TRUE))
+
+CLTL_universe_mean$insol <- "Universe"
+CLTL_insol_mean$insol    <- "Insolvent Firms"
+CLTL <- rbind(CLTL_universe_mean[CLTL_universe_mean$Group.1 > 2004,], 
+                   CLTL_insol_mean[CLTL_insol_mean$Group.1 > 2004,])
+
+colnames(CLTL)     <- c("Year", "Mean", "Insolvency")
+```
+
+Plot the ratio
+
+```{r CLTLPlot}
+
+
+ggplot(CLTL, aes(x=Year, y=Mean, col=Insolvency)) +
+ geom_line() +
+ ggtitle("Current Liabilities to Total Liabilities") +
+ theme(plot.title = element_text(hjust = 0.5))
+
+
+```
+
+Calculate the ratio of total liabilities to total assets.
+
+```{r TLTA, results = "hide"}
+TLTA_universe <- (orbis_de$culi + orbis_de$ncli)/orbis_de$toas
+TLTA_insol    <- (insol_filers$culi + insol_filers$ncli)/insol_filers$toas
+
+TLTA_universe_mean <- aggregate(TLTA_universe, list(orbis_de$year), function(x) mean(x, na.rm=TRUE))
+TLTA_insol_mean    <- aggregate(TLTA_insol, list(insol_filers$year), function(x) mean(x, na.rm=TRUE))
+
+TLTA_universe_mean$insol <- "Universe"
+TLTA_insol_mean$insol    <- "Insolvent Firms"
+TLTA <- rbind(TLTA_universe_mean[TLTA_universe_mean$Group.1 > 2010,], 
+                   TLTA_insol_mean[TLTA_insol_mean$Group.1 > 2010,])
+
+colnames(TLTA)     <- c("Year", "Mean", "Insolvency")
+```
+
+Plot the ratio
+
+```{r TLTAPlot}
+
+
+ggplot(TLTA, aes(x=Year, y=Mean, col=Insolvency)) +
+ geom_line() +
+ ggtitle("Total Liabilities to Total Assets") +
+ theme(plot.title = element_text(hjust = 0.5))
+
+
+```
+
+
+Calculate the ratio of costs to sales.
+
+```{r CS, results = "hide"}
+CS_universe <- orbis_de$cost/orbis_de$turn
+CS_insol    <- insol_filers$cost/insol_filers$turn
+
+CS_universe_mean <- aggregate(CS_universe, list(orbis_de$year), function(x) mean(x, na.rm=TRUE))
+CS_insol_mean    <- aggregate(CS_insol, list(insol_filers$year), function(x) mean(x, na.rm=TRUE))
+
+CS_universe_mean$insol <- "Universe"
+CS_insol_mean$insol    <- "Insolvent Firms"
+CS <- rbind(CS_universe_mean[CS_universe_mean$Group.1 > 2004,], 
+                   CS_insol_mean[CS_insol_mean$Group.1 > 2004,])
+
+colnames(CS)     <- c("Year", "Mean", "Insolvency")
+```
+
+Plot the ratio
+
+```{r CSPlot}
+
+
+ggplot(CS, aes(x=Year, y=Mean, col=Insolvency)) +
+ geom_line() +
+ ggtitle("Cost to Sales") +
+ theme(plot.title = element_text(hjust = 0.5))
+
+
+```
+
+Generate a Dummy for Insolvency
+
+```{r Dummy}
+orbis_de$insolvent <- 0
+orbis_de$insolvent <- orbis_de$bvdid %in% insol_filers$bvdid
+orbis_de$insolvent [orbis_de$insolvent==TRUE] <- 1
+orbis_de$insolvent [orbis_de$insolvent==FALSE] <- 0
+```
+
+Table 1 (Data ranging from 2015-2018)
+
+```{r Table1}
+orbis_de[orbis_de$year>2015,]%>%
+  tab_cells(fias, cuas, stok, debt, ocas, cash, toas, shfd, ncli, culi, loan, cred, ocli, tshf, empl, opre, turn, cost, fipl, taxa, exex, pl)%>%
+  tab_cols(insolvent)%>%
+  tab_stat_mean_sd_n()%>%
+  tab_last_sig_means(subtable_marks = "both") %>% 
+  tab_pivot() %>% 
+  set_caption("Table with summary statistics and significance marks.")
+
+```
+
+Table by size (Starting 2015)
+
+```{r Table2}
+orbis_de[orbis_de$year>2015,]%>%
+  tab_cells(debt,cash,cuas, culi, cred, pl)%>%
+  tab_cols(insolvent)%>%
+  tab_rows(category_of_company)%>%
+  tab_stat_mean()%>%
+  tab_last_sig_means(subtable_marks = "both") %>% 
+  tab_pivot() %>% 
+  set_caption("Table with summary statistics and significance marks.")
+
+```
+
+Gerate different ratios
+
+```{r Ratios}
+orbis_de$gross_profit <- (orbis_de$turn-orbis_de$cost)/orbis_de$turn
+orbis_de$ROA <- orbis_de$pl/orbis_de$toas
+orbis_de$ROE <- orbis_de$shfd/orbis_de$toas
+orbis_de$profit_employee <- orbis_de$pl/orbis_de$empl
+orbis_de$current_ratio <- orbis_de$cuas/orbis_de$culi
+orbis_de$debt_ratio <- (orbis_de$culi + orbis_de$ncli)/orbis_de$toas
+orbis_de$leverage <- orbis_de$shfd/(orbis_de$culi + orbis_de$ncli)
+orbis_de$growth_assets <- (orbis_de$toas-lag(orbis_de$toas))/lag(orbis_de$toas)
+orbis_de$size <- log(orbis_de$toas)
+```
+
+```{r Boxplot Cash to Total Assets}
+orbis_de$cash_toas <- orbis_de$cash/orbis_de$toas
+ggplot(data = orbis_de, 
+       aes(x = insolvent, y = cash_toas)) +
+  geom_boxplot() +
+  xlab("Insolvent") +
+  ylab("Cash_Total Assets") +
+  labs(title = "Comparison by Cash to Total Assets") 
+  
+```

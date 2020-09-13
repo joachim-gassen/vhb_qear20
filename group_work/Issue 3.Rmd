@@ -31,7 +31,7 @@ insol_raw <- read_csv(
 ```{r readOrbis}
 orbis_raw <- read_csv(
   "../raw_data/orbis_wrds_de.csv",
-  col_types = cols(), n_max = 1000
+  col_types = cols()
 )
 ```
 The Insolvency (Orbis) dataset contains `r length(which(duplicated(insol_raw)))` (`r length(which(duplicated(orbis_raw)))`) duplicates. Let's delete them.
@@ -216,16 +216,19 @@ ggplot(CS, aes(x=Year, y=Mean, col=Insolvency)) +
 
 ```
 
-generate a Dummy for Insolvency
+Generate a Dummy for Insolvency
+
 ```{r Dummy}
 orbis_de$insolvent <- 0
 orbis_de$insolvent <- orbis_de$bvdid %in% insol_filers$bvdid
 orbis_de$insolvent [orbis_de$insolvent==TRUE] <- 1
 orbis_de$insolvent [orbis_de$insolvent==FALSE] <- 0
 ```
-Table 1
+
+Table 1 (Data ranging from 2015-2018)
+
 ```{r Table1}
-orbis_de%>%
+orbis_de[orbis_de$year>2015,]%>%
   tab_cells(fias, cuas, stok, debt, ocas, cash, toas, shfd, ncli, culi, loan, cred, ocli, tshf, empl, opre, turn, cost, fipl, taxa, exex, pl)%>%
   tab_cols(insolvent)%>%
   tab_stat_mean_sd_n()%>%
@@ -234,9 +237,11 @@ orbis_de%>%
   set_caption("Table with summary statistics and significance marks.")
 
 ```
-Table by size
+
+Table by size (Starting 2015)
+
 ```{r Table2}
-orbis_de%>%
+orbis_de[orbis_de$year>2015,]%>%
   tab_cells(debt,cash,cuas, culi, cred, pl)%>%
   tab_cols(insolvent)%>%
   tab_rows(category_of_company)%>%
@@ -248,6 +253,7 @@ orbis_de%>%
 ```
 
 Gerate different ratios
+
 ```{r Ratios}
 orbis_de$gross_profit <- (orbis_de$turn-orbis_de$cost)/orbis_de$turn
 orbis_de$ROA <- orbis_de$pl/orbis_de$toas

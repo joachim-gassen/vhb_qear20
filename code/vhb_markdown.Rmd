@@ -29,7 +29,8 @@ library(DBI)
 library(dbplyr)
 library(odbc)
 library(summarytools)
-
+library("ggpubr")
+library("pander")
 
 
 ```
@@ -126,20 +127,9 @@ MergedDF_all2017$fipl <- as.numeric(MergedDF_all2017$fipl)
 MergedDF_all2017$taxa <- as.numeric(MergedDF_all2017$taxa)
 MergedDF_all2017$exex <- as.numeric(MergedDF_all2017$exex)
 MergedDF_all2017$pl <- as.numeric(MergedDF_all2017$pl)
-lapply(MergedDF_all2017, class)
+#lapply(MergedDF_all2017, class)
 
 ```
-
-#write.csv(MergedDF_all2017, file.path("./data", "MergedDF_all2017.csv"), header = TRUE)
-
-#insolv <- paste0(getwd(),"/data/MergedDF_all2017.csv")
-
-#MergedDF_all20171 <- read.csv(file = insolv, header = TRUE, fileEncoding = "UTF-8")
-
-#MergedDF_all20171 <- read.csv(
-# "./data/MergedDF_all2017.csv",
-#  col_types = cols()
-#)
 
 
 Saving the data for easier access later on
@@ -161,20 +151,10 @@ MergedDF_all20171 <- read.csv(
 
 
 =======
-Generate new variables
-```{r newvars}
-attach(MergedDF_all2017)
-MergedDF_all2017$expe <- rowSums(MergedDF_all2017[,c("cost", "fipl", "taxa", "exex")], na.rm = TRUE)
-MergedDF_all2017$neti <- MergedDF_all2017$turn - MergedDF_all2017$expe
-MergedDF_all2017$roa <- MergedDF_all2017$neti / MergedDF_all2017$toas
-MergedDF_all2017$astu <- MergedDF_all2017$opre / MergedDF_all2017$toas
-detach(MergedDF_all2017)
-```
+###Data analysis
 
 
-Data analysis
-
-1) overview over insolvency subjects
+#1) overview over insolvency subjects
 ```{r overview}
 MergedDF_all2017 <- dummy_cols(MergedDF_all2017, select_columns = 'subject')
 MergedDF_all2017$subject_Eröffnungen[is.na(MergedDF_all2017$subject_Eröffnungen)] <- 0
@@ -190,74 +170,129 @@ MergedDF_all2017 %>%
   kable_styling(full_width = FALSE)
 ```
 
-2) restricting data to subject==Eröffnung only
+#2) restricting data to subject==Eröffnung only
 ```{r subsampling}
 subspl <- MergedDF_all2017 %>%
-  filter(subject != "Abweisungen mangels Masse"  & subject != "Entscheidungen im Verfahren"& subject != "Sicherungsmaßnahmen"& subject != "Sonstiges"& subject != "Termine"& subject != "Überwachte Insolvenzpläne"& subject != "Verteilungsverzeichnisse (§ 188 InsO) d. Verw./Treuh."& subject != "Entscheidungen nach Aufhebung des Verfahrens")
+  filter(subject == "Eröffnungen" | is.na(subject))
+```
 
 
+#3) definition of dummy variables / distinction between solvent and insolvent firms
 
+```{r}
+subspl <- dummy_cols(subspl, select_columns = 'subject')
+subspl$subject_Eröffnungen[is.na(subspl$subject_Eröffnungen)] <- 0
+subspl$subject_NA[is.na(subspl$subject_NA)] <- 0
 
-
-
-subspl <- MergedDF_all2017 %>%
-  filter(subject=="Eröffnungen" | is.empty(MergedDF_all2017$subject)
-         
-subspl <- MergedDF_all2017 %>%
-  filter(subject(is.empty(NULL)))
-
-
+insolvent <- subspl %>%
+  filter(subject_Eröffnungen==1)
+solvent <- subspl %>%
+  filter(subject_Eröffnungen==0)
 
 ```
 
 
-```
+#4) insolvency cases through the lens of major sector
 
-
-Insolvency cases through the lens if legal form
-```{r legalfrm}
-MergedDF_all2017 <- dummy_cols(MergedDF_all2017, select_columns = 'subject')
-MergedDF_all2017$subject_Eröffnungen[is.na(MergedDF_all2017$subject_Eröffnungen)] <- 0
-MergedDF_all2017$subject_NA[is.na(MergedDF_all2017$subject_NA)] <- 0
-
-MergedDF_all2017 %>%
+overview sector analysis
+```{r sectrall}
+subspl %>%
   group_by(subject, major_sector) %>%
   summarise(N = n(), .groups = "drop")
 
-MergedDF_all2017 %>%
-  group_by(legalfrm, subject) %>%
-  summarise(N = n(), .groups = "drop")
-  
-MergedDF_all2017 %>%
-  group_by(legalfrm, subject) %>%
-  summarise(N = n(), .groups = "drop")
+subspl %>%
+  summarytools::freq(subject$major_sector, order = "freq")%>%
+  as_tibble(rownames="rowname")
+```
 
+split major sector according to sovent / insolvent firms
+```{r crosssect}
 
-MergedDF_all2017 %>% 
+print(ctable(x = subspl$major_sector, y = subspl$subject_Eröffnungen, prop = "r"),
+      method = "render")
+
+```
+
+#5) insolvency cases through the lens of the firm's legal form
+ 
+first, overview of all legal forms and the respective portions of solvent / insolvent firms
+second, insolvent firms only
+
+with the data availabe, it appears that limited liability companies tend to file for insolvency more often
+
+```{r legalfrm}
+
+print(ctable(x = subspl$legalfrm, y = subspl$subject_Eröffnungen, prop = "r"),
+      method = "render")
+
+insolvent %>% 
   group_by(legalfrm) %>%
   count(subject)
   
-MergedDF_all2017 %>%
-  group_by(subject, legalfrm) %>%
-  summarise(N = n(), .groups = "drop")  
+
 ```
 
 
-Numerical data analysis
+
+#6) Numerical data analysis
+
+Generate new variables
+```{r newvars}
+attach(subspl)
+subspl$expe <- rowSums(subspl[,c("cost", "fipl", "taxa", "exex")], na.rm = TRUE)
+subspl$neti <- subspl$turn - subspl$expe
+subspl$roa <- subspl$neti / subspl$toas
+subspl$astu <- subspl$opre / subspl$toas
+detach(subspl)
+```
+
 
 Comparison of mean values across solvent and insolvent firms
 Basis for comparison: total assets, employees, ROA, asset turnover
 ```{r numdataanalysis}
-MergedDF_all2017 %>%
+
+subspl %>%
   group_by(subject) %>%
   summarise(meantoas = mean(toas, na.rm = TRUE),
             meanempl = mean(empl, na.rm = TRUE),
             meanroa = mean(roa, na.rm = TRUE),
             meanastu = mean(astu, na.rm = TRUE),
             .groups = "drop")
+
+#tried looping through but somehow didn't manage, so here the long way around
+res.toas=t.test(insolvent$toas,solvent$toas)
+pander(res.toas)
+
+res.empl=t.test(insolvent$empl,solvent$empl)
+pander(res.empl)
+
+res.roa=t.test(insolvent$roa,solvent$roa)
+pander(res.roa)
+
+res.astu=t.test(insolvent$astu,solvent$astu)
+pander(res.astu)
 ```
 
+further investigation of mean variables
+```{r furthertoas}
 
+subspl %>%
+group_by(subject) %>%
+  summarise(
+    count = n(),
+    meantoas = mean(toas, na.rm = TRUE),
+    sd = sd(toas, na.rm = TRUE),
+    .groups = "drop")
+
+#something here goes wrong, but it would have been nice if it worked
+subspl %>%
+ggboxplot(x = "subject", y = "toas", 
+          color = "subject", palette = c("#00AFBB", "#E7B800"),
+        ylab = "total assets", xlab = "(in)solvent firms")
+
+
+
+```
 
 
 

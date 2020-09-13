@@ -11,6 +11,7 @@ library(tidyverse)
 library(knitr)
 library(kableExtra)
 library(stringr)
+library(stringdist)
 library(ggplot2)
 
 Sys.setlocale("LC_ALL", "UTF-8")
@@ -29,14 +30,14 @@ insol_raw <- read_csv(
 ```{r readOrbis}
 orbis_raw <- read_csv(
   "../raw_data/orbis_wrds_de.csv",
-  col_types = cols(), n_max = 100000
+  col_types = cols(), n_max = 10000
 )
 ```
 The Insolvency (Orbis) dataset contains `r length(which(duplicated(insol_raw)))` (`r length(which(duplicated(orbis_raw)))`) duplicates. Let's delete them.
 
 ```{r deleteDups, results = "hide"}
 insol_de <- insol_raw %>% unique()
-#orbis_de <- orbis_raw %>% unique()
+orbis_de <- orbis_raw %>% unique()
 ```
 
 
@@ -55,32 +56,63 @@ internat_name <- str_replace(internat_name, "Ü","Ue")
 internat_name <- str_replace(internat_name, "ä","ae")
 internat_name <- str_replace(internat_name, "ö","oe")
 internat_name <- str_replace(internat_name, "ü","ue")
+
+#Remove duplicates and the "(haftungsbeschraenkt)" tag
+internat_name <- unique(internat_name)
+internat_name <- str_replace(internat_name, "\\(haftungsbeschraenkt\\)", "")
+
 ```
 
 
-Try to find a match for each insolvent company in the orbis universe
+Try to find a match for each insolvent company in the orbis universe. To do this the Damerau-Levenshtein distance is applied.
+```{r fuzzyMatchFunction, results = "hide"}
+ClosestMatch = function(string, stringVector, maxDist){
+  
+  match <- stringVector[amatch(string, stringVector, 
+                               method = "dl",
+                               maxDist=maxDist)]
+  
+  if(!is.na(match)){
+    which(stringVector == match)
+  }
+}
+```
+
+
+The restrictiveness of the matching is based on the length of the firm name. We are super restrictive for short names
 ```{r fuzzyMatch, results = "hide"}
+
 insol_filers <- data_frame()
 pb <- txtProgressBar(min = 0, max = length(internat_name), style = 3)
-insol_filer <- rep(0, length(orbis_de))
+insol_filer <- rep(0, length(orbis_de$X1))
 for(i in 1:length(internat_name)){
   
-  rown <- "NA"
+  rowno <- "NA"
   #Look for exact match
-  if(!internat_name==""){
-  rown <- which(orbis_de$name_internat == internat_name[i])
-  
-  #Fuzzy match if noch exact match is found
-  if(!length(rown)>0){
-  rown <- agrep(internat_name[i], orbis_de$name_internat)
+  rowno <- which(orbis_de$name_internat == internat_name[i])
+
+  if(!length(rowno)>0){
+    
+    if(nchar(internat_name[i])<=15){
+      rowno <- ClosestMatch(internat_name[i], orbis_de$name_internat, 0.1 )
+    }
+    
+   if(nchar(internat_name[i])>15 && nchar(internat_name[i])<=30 ){
+      rowno <- ClosestMatch(internat_name[i], orbis_de$name_internat, 2 )
+   }
+    
+   if(nchar(internat_name[i])>30){
+      rowno <- ClosestMatch(internat_name[i], orbis_de$name_internat, 4 )
+   }
+    
+
   }
-  
-  #If there is a match save it
-  if(length(rown)>0){
-    insol_filers <- rbind(insol_filers, orbis_de[rown,])
-    insol_filer[rown] <- 1
-  }
-  }
+    
+    #If there is a match save it
+    if(length(rowno)>0){
+      insol_filers <- rbind(insol_filers, orbis_de[rowno,])
+      insol_filer[rowno] <- 1
+    }
   setTxtProgressBar(pb, i)
 }
 ```
@@ -95,8 +127,8 @@ CLTL_insol    <- insol_filers$culi/(insol_filers$culi + insol_filers$ncli)
 CLTL_universe_mean <- aggregate(CLTL_universe, list(orbis_de$year), function(x) mean(x, na.rm=TRUE))
 CLTL_insol_mean    <- aggregate(CLTL_insol, list(insol_filers$year), function(x) mean(x, na.rm=TRUE))
 
-CLTL_universe_mean$insol <- "No Insolvency"
-CLTL_insol_mean$insol    <- "Insolvency"
+CLTL_universe_mean$insol <- "Universe"
+CLTL_insol_mean$insol    <- "Insolvent Firms"
 CLTL <- rbind(CLTL_universe_mean[CLTL_universe_mean$Group.1 > 2000,], 
                    CLTL_insol_mean[CLTL_insol_mean$Group.1 > 2000,])
 

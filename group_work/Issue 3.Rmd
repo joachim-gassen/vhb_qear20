@@ -30,7 +30,7 @@ insol_raw <- read_csv(
 ```{r readOrbis}
 orbis_raw <- read_csv(
   "../raw_data/orbis_wrds_de.csv",
-  col_types = cols(), n_max = 10000
+  col_types = cols(), n_max = 100000
 )
 ```
 The Insolvency (Orbis) dataset contains `r length(which(duplicated(insol_raw)))` (`r length(which(duplicated(orbis_raw)))`) duplicates. Let's delete them.
@@ -42,12 +42,14 @@ orbis_de <- orbis_raw %>% unique()
 
 
 For our analysis we want to have a closer look at firms that filed for insolvency (subject == Eröffnungen):
+
 ```{r getOpenings, results = "hide"}
 insol_open_de <- insol_de[insol_de$subject == "Eröffnungen",]
 ```
 
 
-Fuzzy match based on international names excluding umlauts
+Fuzzy match based on international names excluding umlauts.
+
 ```{r replaceUmplauts, results = "hide"}
 internat_name <- insol_open_de$name_debtor
 internat_name <- str_replace(internat_name, "Ä","Ae")
@@ -65,6 +67,7 @@ internat_name <- str_replace(internat_name, "\\(haftungsbeschraenkt\\)", "")
 
 
 Try to find a match for each insolvent company in the orbis universe. To do this the Damerau-Levenshtein distance is applied.
+
 ```{r fuzzyMatchFunction, results = "hide"}
 ClosestMatch = function(string, stringVector, maxDist){
   
@@ -79,7 +82,8 @@ ClosestMatch = function(string, stringVector, maxDist){
 ```
 
 
-The restrictiveness of the matching is based on the length of the firm name. We are super restrictive for short names
+The restrictiveness of the matching is based on the length of the firm name. We are super restrictive for short names.
+
 ```{r fuzzyMatch, results = "hide"}
 
 insol_filers <- data_frame()
@@ -117,9 +121,10 @@ for(i in 1:length(internat_name)){
 }
 ```
 
-The methodology identified orbis data for `r length(unique(insol_filers$bvdid))` of the `r length(internat_name)` insolvent companies.
+Now analyse how the insolvent firms differ from the unisverse of firms.
 
-Calculate the ratio of current liabilities to total liabilities-
+Calculate the ratio of current liabilities to total liabilities.
+
 ```{r CLTL, results = "hide"}
 CLTL_universe <- orbis_de$culi/(orbis_de$culi + orbis_de$ncli)
 CLTL_insol    <- insol_filers$culi/(insol_filers$culi + insol_filers$ncli)
@@ -129,8 +134,8 @@ CLTL_insol_mean    <- aggregate(CLTL_insol, list(insol_filers$year), function(x)
 
 CLTL_universe_mean$insol <- "Universe"
 CLTL_insol_mean$insol    <- "Insolvent Firms"
-CLTL <- rbind(CLTL_universe_mean[CLTL_universe_mean$Group.1 > 2000,], 
-                   CLTL_insol_mean[CLTL_insol_mean$Group.1 > 2000,])
+CLTL <- rbind(CLTL_universe_mean[CLTL_universe_mean$Group.1 > 2004,], 
+                   CLTL_insol_mean[CLTL_insol_mean$Group.1 > 2004,])
 
 colnames(CLTL)     <- c("Year", "Mean", "Insolvency")
 ```

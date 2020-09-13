@@ -140,7 +140,7 @@ CLTL <- rbind(CLTL_universe_mean[CLTL_universe_mean$Group.1 > 2004,],
 colnames(CLTL)     <- c("Year", "Mean", "Insolvency")
 ```
 
-Plot the ratios
+Plot the ratio
 
 ```{r CLTLPlot}
 
@@ -153,3 +153,63 @@ ggplot(CLTL, aes(x=Year, y=Mean, col=Insolvency)) +
 
 ```
 
+Calculate the ratio of total liabilities to total assets.
+
+```{r TLTA, results = "hide"}
+TLTA_universe <- (orbis_de$culi + orbis_de$ncli)/orbis_de$toas
+TLTA_insol    <- (insol_filers$culi + insol_filers$ncli)/insol_filers$toas
+
+TLTA_universe_mean <- aggregate(TLTA_universe, list(orbis_de$year), function(x) mean(x, na.rm=TRUE))
+TLTA_insol_mean    <- aggregate(TLTA_insol, list(insol_filers$year), function(x) mean(x, na.rm=TRUE))
+
+TLTA_universe_mean$insol <- "Universe"
+TLTA_insol_mean$insol    <- "Insolvent Firms"
+TLTA <- rbind(TLTA_universe_mean[TLTA_universe_mean$Group.1 > 2010,], 
+                   TLTA_insol_mean[TLTA_insol_mean$Group.1 > 2010,])
+
+colnames(TLTA)     <- c("Year", "Mean", "Insolvency")
+```
+
+Plot the ratio
+
+```{r TLTAPlot}
+
+
+ggplot(TLTA, aes(x=Year, y=Mean, col=Insolvency)) +
+ geom_line() +
+ ggtitle("Total Liabilities to Total Assets") +
+ theme(plot.title = element_text(hjust = 0.5))
+
+
+```
+
+
+Calculate the ratio of costs to sales.
+
+```{r CS, results = "hide"}
+CS_universe <- orbis_de$cost/orbis_de$turn
+CS_insol    <- insol_filers$cost/insol_filers$turn
+
+CS_universe_mean <- aggregate(CS_universe, list(orbis_de$year), function(x) mean(x, na.rm=TRUE))
+CS_insol_mean    <- aggregate(CS_insol, list(insol_filers$year), function(x) mean(x, na.rm=TRUE))
+
+CS_universe_mean$insol <- "Universe"
+CS_insol_mean$insol    <- "Insolvent Firms"
+CS <- rbind(CS_universe_mean[CS_universe_mean$Group.1 > 2004,], 
+                   CS_insol_mean[CS_insol_mean$Group.1 > 2004,])
+
+colnames(CS)     <- c("Year", "Mean", "Insolvency")
+```
+
+Plot the ratio
+
+```{r CSPlot}
+
+
+ggplot(CS, aes(x=Year, y=Mean, col=Insolvency)) +
+ geom_line() +
+ ggtitle("Cost to Sales") +
+ theme(plot.title = element_text(hjust = 0.5))
+
+
+```

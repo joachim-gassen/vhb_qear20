@@ -13,6 +13,7 @@ library(kableExtra)
 library(stringr)
 library(stringdist)
 library(ggplot2)
+library(expss)
 
 Sys.setlocale("LC_ALL", "UTF-8")
 ```
@@ -30,7 +31,7 @@ insol_raw <- read_csv(
 ```{r readOrbis}
 orbis_raw <- read_csv(
   "../raw_data/orbis_wrds_de.csv",
-  col_types = cols(), n_max = 100000
+  col_types = cols(), n_max = 1000
 )
 ```
 The Insolvency (Orbis) dataset contains `r length(which(duplicated(insol_raw)))` (`r length(which(duplicated(orbis_raw)))`) duplicates. Let's delete them.
@@ -153,7 +154,6 @@ ggplot(CLTL, aes(x=Year, y=Mean, col=Insolvency)) +
 
 ```
 
-<<<<<<< HEAD
 Calculate the ratio of total liabilities to total assets.
 
 ```{r TLTA, results = "hide"}
@@ -214,11 +214,53 @@ ggplot(CS, aes(x=Year, y=Mean, col=Insolvency)) +
 
 
 ```
-=======
+
+generate a Dummy for Insolvency
+```{r Dummy}
+orbis_de$insolvent <- 0
+orbis_de$insolvent <- orbis_de$bvdid %in% insol_filers$bvdid
+orbis_de$insolvent [orbis_de$insolvent==TRUE] <- 1
+orbis_de$insolvent [orbis_de$insolvent==FALSE] <- 0
+```
+Table 1
+```{r Table1}
+orbis_de%>%
+  tab_cells(fias, cuas, stok, debt, ocas, cash, toas, shfd, ncli, culi, loan, cred, ocli, tshf, empl, opre, turn, cost, fipl, taxa, exex, pl)%>%
+  tab_cols(insolvent)%>%
+  tab_stat_mean_sd_n()%>%
+  tab_last_sig_means(subtable_marks = "both") %>% 
+  tab_pivot() %>% 
+  set_caption("Table with summary statistics and significance marks.")
+
+```
+Table by size
+```{r Table2}
+orbis_de%>%
+  tab_cells(debt,cash,cuas, culi, cred, pl)%>%
+  tab_cols(insolvent)%>%
+  tab_rows(category_of_company)%>%
+  tab_stat_mean()%>%
+  tab_last_sig_means(subtable_marks = "both") %>% 
+  tab_pivot() %>% 
+  set_caption("Table with summary statistics and significance marks.")
+
+```
+
+Gerate different ratios
+```{r Ratios}
+orbis_de$gross_profit <- (orbis_de$turn-orbis_de$cost)/orbis_de$turn
+orbis_de$ROA <- orbis_de$pl/orbis_de$toas
+orbis_de$ROE <- orbis_de$shfd/orbis_de$toas
+orbis_de$profit_employee <- orbis_de$pl/orbis_de$empl
+orbis_de$current_ratio <- orbis_de$cuas/orbis_de$culi
+orbis_de$debt_ratio <- (orbis_de$culi + orbis_de$ncli)/orbis_de$toas
+orbis_de$leverage <- orbis_de$shfd/(orbis_de$culi + orbis_de$ncli)
+orbis_de$growth_assets <- (orbis_de$toas-lag(orbis_de$toas))/lag(orbis_de$toas)
+orbis_de$size <- log(orbis_de$toas)
+```
+
 ```{r Boxplot Cash to Total Assets}
-
 orbis_de$cash_toas <- orbis_de$cash/orbis_de$toas
-
 ggplot(data = orbis_de, 
        aes(x = insolvent, y = cash_toas)) +
   geom_boxplot() +
@@ -227,4 +269,3 @@ ggplot(data = orbis_de,
   labs(title = "Comparison by Cash to Total Assets") 
   
 ```
->>>>>>> 546230079e48e9f40c5d29bda32d69d12039acfe

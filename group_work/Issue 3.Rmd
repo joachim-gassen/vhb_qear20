@@ -66,7 +66,7 @@ internat_name <- str_replace(internat_name, "\\(haftungsbeschraenkt\\)", "")
 
 ```
 
-
+### Merging the Data
 Try to find a match for each insolvent company in the orbis universe. To do this the Damerau-Levenshtein distance is applied.
 
 ```{r fuzzyMatchFunction, results = "hide"}
@@ -122,6 +122,7 @@ for(i in 1:length(internat_name)){
 }
 ```
 
+### Analysis
 Now analyse how the insolvent firms differ from the unisverse of firms.
 
 Calculate the ratio of current liabilities to total liabilities.

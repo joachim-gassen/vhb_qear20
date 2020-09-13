@@ -3,6 +3,18 @@ title: "Group 2 - merge data sets"
 output: html_document
 ---
 
+getwd()
+
+directory <- setwd("../vhb_qear20/")
+
+#write.csv(MergedDF_all2017, file.path("./data", "MergedDF_all2017.csv"), row.names = TRUE)
+
+#MergedDF_all2017.csv <- read_csv(
+#  "../data/MergedDF_all2017.csv",
+#  col_types = cols()
+#)
+
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
@@ -16,6 +28,9 @@ library(psych)
 library(DBI)
 library(dbplyr)
 library(odbc)
+library(summarytools)
+
+
 
 ```
 
@@ -40,11 +55,11 @@ Connection Timeout=30", timeout = 10)
 Reading insolvency data in August and September where subject is "Eröffnungen" directly from the database
 ```{r readData}
 
-#orbis_raw <- read.csv(
-#  "../raw_data/orbis_wrds_de.csv", 
-#  header = TRUE,
-#  fileEncoding = "UTF-8"
-#)
+orbis_raw <- read.csv(
+  "../raw_data/orbis_wrds_de.csv.gz", 
+  header = TRUE,
+  fileEncoding = "UTF-8"
+)
 
 orbis_raw_top1000 <- read.csv(
   "../raw_data/orbis_wrds_de.csv.gz", 
@@ -57,8 +72,7 @@ orbis_raw_top1000 <- read.csv(
 
 #SELECT * FROM dbo.insolvency FULL OUTER JOIN dbo.orbis ON dbo.insolvency.name_debtor = dbo.orbis.name_native WHERE (dbo.orbis.year >= 2017
 
-MergedDF_all2017 <- dbGetQuery(con, "SELECT column1, date, year, closdate, insolvency_court, court_file_number, subject, name_debtor, domicile_debtor, ctryiso, bvdid, name_internat , name_native , major_sector , nace2_main_section , naceccod2 , ussicpcod , category_of_company , status_str , legalfrm , indepind , listed , conscode , filing_type , accpractice , audstatus , source , fias , cuas , stok , debt , ocas , cash , toas , shfd , ncli , culi , loan , cred , ocli , tshf , empl , opre , turn , cost , fipl , taxa , exex , pl
- FROM orbis_insolvency_merge")
+MergedDF_all2017 <- dbGetQuery(con, "SELECT column1, date, year, closdate, insolvency_court, court_file_number, subject, name_debtor, domicile_debtor, ctryiso, bvdid, name_internat , name_native , major_sector , nace2_main_section , naceccod2 , ussicpcod , category_of_company , status_str , legalfrm , indepind , listed , conscode , filing_type , accpractice , audstatus , source , fias , cuas , stok , debt , ocas , cash , toas , shfd , ncli , culi , loan , cred , ocli , tshf , empl , opre , turn , cost , fipl , taxa , exex , pl FROM orbis_insolvency_merge")
 
 #SELECT * FROM dbo.insolvency FULL OUTER JOIN dbo.orbis ON dbo.insolvency.name_debtor = dbo.orbis.name_native WHERE (dbo.insolvency.subject = 'Eröffnungen') AND (dbo.insolvency.date >= '2020-08-01') AND (dbo.insolvency.date <= '2020-09-30')
 
@@ -89,7 +103,7 @@ kable(nas_df) %>%
 
 ```{r convert data types}
 
-#TODO - convert selected column into numeric
+#convert selected column into numeric
 MergedDF_all2017$fias <- as.numeric(MergedDF_all2017$fias)
 MergedDF_all2017$cuas <- as.numeric(MergedDF_all2017$cuas)
 MergedDF_all2017$stok <- as.numeric(MergedDF_all2017$stok)
@@ -116,6 +130,35 @@ lapply(MergedDF_all2017, class)
 
 ```
 
+#write.csv(MergedDF_all2017, file.path("./data", "MergedDF_all2017.csv"), header = TRUE)
+
+#insolv <- paste0(getwd(),"/data/MergedDF_all2017.csv")
+
+#MergedDF_all20171 <- read.csv(file = insolv, header = TRUE, fileEncoding = "UTF-8")
+
+#MergedDF_all20171 <- read.csv(
+# "./data/MergedDF_all2017.csv",
+#  col_types = cols()
+#)
+
+
+Saving the data for easier access later on
+```{r datasave}
+
+write.csv(MergedDF_all2017, file.path("./data", "MergedDF_all2017.csv"), row.names = TRUE)
+
+insolv <- paste0(getwd(),"/data/MergedDF_all2017.csv")
+MergedDF_all20171 <- read.csv(file = insolv, header = TRUE, fileEncoding = "UTF-8")
+
+
+MergedDF_all20171 <- read.csv(
+ "./data/MergedDF_all2017.csv",
+  col_types = cols()
+)
+
+```
+
+
 
 =======
 Generate new variables
@@ -130,46 +173,49 @@ detach(MergedDF_all2017)
 
 
 Data analysis
-```{r datanalysis}
+
+1) overview over insolvency subjects
+```{r overview}
 MergedDF_all2017 <- dummy_cols(MergedDF_all2017, select_columns = 'subject')
 MergedDF_all2017$subject_Eröffnungen[is.na(MergedDF_all2017$subject_Eröffnungen)] <- 0
 MergedDF_all2017$subject_NA[is.na(MergedDF_all2017$subject_NA)] <- 0
 
 
 MergedDF_all2017 %>%
-
-top1000rightjoin_data %>%
   group_by(subject) %>%
   summarise(N = n(), .groups = "drop") %>%
   rename(`Insolvency Cases` = subject) %>%
   arrange(`Insolvency Cases`) %>%
   kable(format.args = list(big.mark = ",")) %>%
   kable_styling(full_width = FALSE)
+```
+
+2) restricting data to subject==Eröffnung only
+```{r subsampling}
+subspl <- MergedDF_all2017 %>%
+  filter(subject != "Abweisungen mangels Masse"  & subject != "Entscheidungen im Verfahren"& subject != "Sicherungsmaßnahmen"& subject != "Sonstiges"& subject != "Termine"& subject != "Überwachte Insolvenzpläne"& subject != "Verteilungsverzeichnisse (§ 188 InsO) d. Verw./Treuh."& subject != "Entscheidungen nach Aufhebung des Verfahrens")
 
 
-top1000rightjoin_data <- dummy_cols(top1000rightjoin_data, select_columns = 'subject')
-top1000rightjoin_data$subject_Eröffnungen[is.na(top1000rightjoin_data$subject_Eröffnungen)] <- 0
-top1000rightjoin_data$subject_NA[is.na(top1000rightjoin_data$subject_NA)] <- 0
 
 
 
-top1000rightjoin_data %>%
-  group_by(legalfrm, subject) %>%
-  summarise(N = n(), .groups = "drop")
+
+subspl <- MergedDF_all2017 %>%
+  filter(subject=="Eröffnungen" | is.empty(MergedDF_all2017$subject)
+         
+subspl <- MergedDF_all2017 %>%
+  filter(subject(is.empty(NULL)))
 
 
-top1000rightjoin_data %>% 
-  group_by(legalfrm) %>%
-  count(subject)
-  
-insol_de %>%
-  group_by(subject, legalfrm) %>%
-  summarise(N = n(), .groups = "drop")
+
 ```
 
 
-Data analysis
-```{r datanalysis}
+```
+
+
+Insolvency cases through the lens if legal form
+```{r legalfrm}
 MergedDF_all2017 <- dummy_cols(MergedDF_all2017, select_columns = 'subject')
 MergedDF_all2017$subject_Eröffnungen[is.na(MergedDF_all2017$subject_Eröffnungen)] <- 0
 MergedDF_all2017$subject_NA[is.na(MergedDF_all2017$subject_NA)] <- 0
@@ -177,17 +223,38 @@ MergedDF_all2017$subject_NA[is.na(MergedDF_all2017$subject_NA)] <- 0
 MergedDF_all2017 %>%
   group_by(subject, major_sector) %>%
   summarise(N = n(), .groups = "drop")
+
+MergedDF_all2017 %>%
+  group_by(legalfrm, subject) %>%
+  summarise(N = n(), .groups = "drop")
+  
+MergedDF_all2017 %>%
+  group_by(legalfrm, subject) %>%
+  summarise(N = n(), .groups = "drop")
+
+
+MergedDF_all2017 %>% 
+  group_by(legalfrm) %>%
+  count(subject)
+  
+MergedDF_all2017 %>%
+  group_by(subject, legalfrm) %>%
+  summarise(N = n(), .groups = "drop")  
 ```
 
 
 Numerical data analysis
+
+Comparison of mean values across solvent and insolvent firms
+Basis for comparison: total assets, employees, ROA, asset turnover
 ```{r numdataanalysis}
 MergedDF_all2017 %>%
   group_by(subject) %>%
   summarise(meantoas = mean(toas, na.rm = TRUE),
             meanempl = mean(empl, na.rm = TRUE),
             meanroa = mean(roa, na.rm = TRUE),
-            meanastu = mean(astu, na.rm = TRUE))
+            meanastu = mean(astu, na.rm = TRUE),
+            .groups = "drop")
 ```
 
 

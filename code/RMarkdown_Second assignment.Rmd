@@ -1,0 +1,73 @@
+---
+title: "Insolvency dataset"
+author: "Group 1"
+date: "04.09.2020"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## German insolvency courts
+### The Data
+It contains all filings recorded by the German insolvency courts in the months July and August. 
+The data has been collected daily. There are 10.035 observations of 6 variables. The variables are characterized as follows:
+
+**Table 1. Variable Information**
+
+| *Variable*       |*Position*|*Label, description*|*Variable types* |*Amount of values*|
+|------------------|----------|--------------------|-----------------|------------------|
+| date             |1         | Day on which the observation was recorded, from 01.07.2020 to 14.08.2020.|numerical, continuous, interval variable| 10.035|
+| insolvency_court |2         | Location of the court to which the insolvency petition is submitted: Aachen, Charlottenburg, Zweibrücken etc.|categorical, nominal variable| 10.035|
+|court_file_number |3         | Unique alphanumeric designation of the insolvency petition.|categorical, nominal variable| 10.035|
+|subject |4         | Information regarding the status of the insolvency petition.|categorical, nominal variable| 10.035|
+|name_debtor       |5         | The debtor´s name.|categorical, nominal variable| 10.033|
+|domicile_debtor   |6         | Location of the debtor.|categorical, nominal variable| 10.033|
+
+There are two missing values by name and location of the debtor. These observations (rows) can be excluded from the general sample.
+
+### What information does dataset provide?
+For further analysis, the number of observations per day is counted according to different categories. First the "subject" observations are counted, which has the following categories:
+
+- Abweisungen mangels Masse = 505
+- Entscheidungen im Restschuldbefreiungsverfahre = 142
+- Entscheidungen im Verfahren = 3865
+- Entscheidungen nach Aufhebung des Verfahrens = 77
+- Eröffnungen = 899
+- Sicherungsmaßnahmen = 544
+- Sonstiges = 576
+- Termine = 2418
+
+On average, there were around 26 "Eröffnung" per day in July and August. 
+
+![Figure 1. Amount of subject "Eröffnung" per day, total = 899 observations](C:/Users/Olga Sagradov/Documents/R/vhb_qear20/raw_data/Rplot01.png)
+
+\newpage 
+
+Average amount of "Abweisungen mangels Masse" per day in July and August is 14. With the exception of a few observations, the values fluctuate between 8 and 20 per day.
+
+![Figure 2. Amount of subject "Abweisungen mangels Masse" per day, total = 505 observations](C:/Users/Olga Sagradov/Documents/R/vhb_qear20/raw_data/Rplot02.png)
+
+The most common category is "Entscheidungen im Verfahren" with 3.865 observations. Figure 3 visualizes daily recorded observations for this category, which vary between 85 and 140 records per day.
+
+![Figure 3. Amount of subject "Entscheidungen im Verfahren" per day, total = 505 observations](C:/Users/Olga Sagradov/Documents/R/vhb_qear20/raw_data/Rplot03.png)
+
+
+The largest number of observations was recorded in Charlottenburg (see table 2).
+
+**Table 2. Insolvency court location: The 5 highest values of observations **
+
+| *Location*       |*Amount of observations*|
+|------------------|------------------------|
+| Charlottenburg   |638                     |
+| Hamburg   |413                     |
+| Köln   |382                     |
+| München   |381                     |
+| Düsseldorf   |284                     |
+
+
+Further analysis reveals that in general 7.189 cases or insolvency petitions (according to the variable "court_file_number") have been observed. Some of them correspond to 12, 10 etc. values  of the variable "subject", which means that several decisions could have been made in a single case within two months. But, by further detailed observation of the case number 103 IN 105/18 can be concluded that all 12 decisions to this case (column "subject") were categorized as "Entscheidungen im Verfahren". There is 5 decisions on 27 July and 7 decisions on 29 July. Thus, absolutely identical lines were found, so that all six variables are the same in their values. Using the unique() function in R, the duplicates can be removed from the sample. It will reduce the total number of observations from 10.035 to 9.355.
+

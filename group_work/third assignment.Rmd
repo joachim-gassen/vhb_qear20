@@ -1,0 +1,168 @@
+---
+title: "The third assignment"
+author: "Group 1"
+date: "13 9 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(readr)
+```
+
+There are 2 datasets which we need to analyse in order to explore the differences between the Orbis universe of German firms and the firms that filed for Insolvency in July and August. We first read in the insolvency dataset:
+
+```{r readdata}
+insol_raw <- read_csv(
+  "~/R/vhb_qear20/raw_data/insolvency_filings_de_julaug2020.csv",
+  col_types = cols()
+)
+```
+
+
+After preparing the codebooks we get some information about the set of variables. The next step is to assess how the datasets are related for later merging. As stated in the assignment, we first need to limit the insolvency data to the filings type “Eröffnung”. To do so we first have to repeat the step for preparing the insolvency data from the first assignment, namely deleting the duplicates and missing values. Let’s do it and then limit the sample only to the “Eröffnungen” subject with this code:
+
+```{r limitsample}
+insol_de <- insol_raw %>% unique()
+
+insol_de <- insol_de %>%
+  filter(!is.na(name_debtor))
+
+insol_erffn <- insol_de %>%
+  filter(subject == "Eröffnungen")
+```
+
+We still need the second dataset, but it cannot be uploaded to github. That means, the path to the file in the code below has to be adjusted (i.e. the unique path to the code users folder):
+
+```{r readOrbisdata}
+orbis_wrds <- read.csv(
+  "~/R/vhb_qear20/raw_data/orbis_wrds_de.csv.gz", sep = ",")
+```
+
+We now have two datasets prepared for analysis. What do they have in common? When we look at the data, we see that the names of the firms can be seen as a “bridge” between the two datasets. To check this, we compare the company names in both datasets and create a new variable that takes the value “TRUE” if there is a match and the value “FALSE” otherwise. We add this variable to the Orbis dataset, cause we still have financial data there and we want to analyze it further. Let’s compare the firm names and then look at the new variable:5. How many matches do we have?
+
+```{r matching}
+orbis_wrds$insolvent <- orbis_wrds$name_internat %in% insol_erffn$name_debtor
+```
+
+How much matches do we have?
+
+```{r matches}
+orbis_wrds %>%
+  group_by(insolvent) %>%
+  summarise(N = n(), .groups = "drop") %>%
+  rename(`Matching` = insolvent) %>%
+  arrange(`N`) %>%
+  kable(format.args = list(big.mark = ",")) %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+Given our results the name of the company is the first significant variable to compare the datasets. However there are two issues that we have to account for. First, the insolvency datasets does not use a unique name for every firm/debtor. There are numerous typos and smaller differences between the datasets, which reduce the number of successful matches. Second, annual company data for a company can appear several times again with inconsistent results. For example if we filter the dataset to status_str and year, the firm AC Consulting GmbH is listed as being ‘Active’, ‘ Dissolved’ and ‘Dissolved (liquidation)’ for the year 2008. Therefore, we limited the AC Consulting GmbH observation only to the status “active”.
+
+The second variable that we think is of great interest is the status of the company in Orbis Dataset. Actually, according to Insolvency Data, insolvency cases were opened in July or August for all companies that are now labeled “TRUE” in Orbis Dataset. This means that only active companies have to appear among these companies, as Orbis Dataset only provides data until 2019, which we can see if we table the variable “year”:
+
+```{r}
+table(orbis_wrds$year)
+```
+
+Let’s filter the observation with “TRUE” value und look at the firm status. We also can add the variable “year”:
+
+```{r}
+true_orbis <- orbis_wrds %>% 
+  filter(insolvent == "TRUE") %>%
+  select(name_internat, status_str, year)
+
+true_orbis %>%
+  group_by(name_internat, status_str, year) %>%
+  arrange(name_internat, status_str) %>%
+  kable() %>%
+  kable_styling()
+```
+
+Now we need to find informative variables to compare the insolvent firms with the others. In literature lots of determinants/ratios have been used to predict insolvency/financial distress or to compare failed and successful firms with each other,  including financial ratios (liquidity, R&D, leverage, profitability, firm size), but also other variables (corporate social responsiblity, corporate governance measures and macroeconomic factors). We need to look which variables are available in the Orbis dataset, and decided to analyse profitability and liquidity.
+
+```{r}
+true_active <- orbis_wrds %>% 
+  filter(insolvent == "TRUE", status_str == "Active") %>%
+  select(name_internat, status_str, year, toas, pl, cuas, culi)
+```
+
+*Profitability*
+
+Unfortunately we have a lot of missing values by the variable profit (pl). Nevertheless, we can discover and visualize trends from the existing data. The procedure is as follows:
+Step one - Add new variable profitability (pl/toas):
+
+```{r}
+true_active$profit <- true_active$pl / true_active$toas
+```
+
+Step two - Visualization
+
+```{r}
+ggplot(data = true_active, aes(x = year, y = profit, color = profit)) +
+  geom_point() +
+  theme_minimal()
+```
+
+From this we can see that many values (pl/toas) move around zero years before the bankruptcy is opened; this suggests that there is some kind of pattern in place for companies going insolvent.
+
+Lets compare it with the active firms from orbis datasets which don't match with the insolvency data (the code below). We also limit the subset with the variables firms name, status, year, total assets, profit, current assets and current liabilities. 
+
+We need to limit the y-axis (see figure below), because some of total assets values are too small (1, 7 etc.) which lead us to very high profits, what looks incomprehensible. 
+
+```{r}
+false_orbis <- orbis_wrds %>% 
+  filter(insolvent == "FALSE", status_str == "Active") %>%
+  select(name_internat, status_str, year, toas, pl, cuas, culi)
+
+false_orbis$profit <- false_orbis$pl / false_orbis$toas
+
+ggplot(data = false_orbis, aes(x = year, y = profit)) +
+  geom_point() +
+  theme_minimal() +
+  ylim(0,4)
+```
+
+This shows us a different picture than before. From 2000 the values for pl/toas generally go beyond 1 for many observations; overall a decline in the ratio can be seen from 2010.
+
+*Liquidity*
+
+Step one - Now we calculate the current liquidity by dividing the current assets by the current liabilities. First we look again at the companies that are present in both datasets.
+
+```{r liquiditycalculation}
+true_active$liquid <- true_active$cuas / true_active$culi
+
+```
+
+Step two - Visualisation:
+
+```{r}
+ggplot(data = true_active, aes(x = year, y = liquid)) +
+  geom_point(colour="#7997FF") +
+  theme_minimal() +
+  ylim(0,10)
+```
+
+From the visualization we can see that the variable (cuas/culi) is for many observations below 2.5, or at least below 5.0 away from 2005; indicating that there is a pattern for such firms.
+
+For comparison, we calculate the liquidity of companies that are active and which are not involved in insolvency proceedings.
+
+```{r}
+false_orbis$liquid <- false_orbis$cuas / false_orbis$culi
+```
+
+Visualization:
+
+```{r}
+ggplot(data = false_orbis, aes(x = year, y = liquid)) +
+  geom_point() +
+  theme_minimal() +
+  ylim(0,120)
+```
+
+In contrast to the visualization before, we can see that active firms (not involved in insolvency proceedings) in general face a much higher ratio cuas/culi; at least after 2000.
+In the Orbis dataset the total assets of some observations have either negative or null values, so we do not have to take these values into account for the visualization. What we can also determine is that the Orbis dataset needs a transformation/adjustment before doing further data analysis, because negative values for the total assets do not seem plausible.

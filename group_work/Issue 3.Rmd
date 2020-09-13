@@ -153,6 +153,7 @@ ggplot(CLTL, aes(x=Year, y=Mean, col=Insolvency)) +
 
 ```
 
+<<<<<<< HEAD
 Calculate the ratio of total liabilities to total assets.
 
 ```{r TLTA, results = "hide"}
@@ -213,3 +214,17 @@ ggplot(CS, aes(x=Year, y=Mean, col=Insolvency)) +
 
 
 ```
+=======
+```{r Boxplot Cash to Total Assets}
+
+orbis_de$cash_toas <- orbis_de$cash/orbis_de$toas
+
+ggplot(data = orbis_de, 
+       aes(x = insolvent, y = cash_toas)) +
+  geom_boxplot() +
+  xlab("Insolvent") +
+  ylab("Cash_Total Assets") +
+  labs(title = "Comparison by Cash to Total Assets") 
+  
+```
+>>>>>>> 546230079e48e9f40c5d29bda32d69d12039acfe

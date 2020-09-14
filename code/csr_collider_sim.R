@@ -4,18 +4,7 @@
 # This is a small simulation to show the effect of self-selections introducing
 # an implicit collider variable on which you (have to) condition your 
 # analysis
-#install.packages("ggplot2")
-#install.packages("tidyverse")
-#install.packages("colorspace")
-#install.packages("magrittr")
-#install.packages("dplyr")
 
-# needs to be run every time you start R and want to use %>%
-library(magrittr) 
-library(dplyr)
-
-library(colorspace)
-library(ggplot2)
 library(tidyverse)
 library(truncnorm)
 

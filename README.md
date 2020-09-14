@@ -2,19 +2,10 @@
 
 ### Welcome!
 
-This is Group JJMV - no. 2
-
-
 This is the repository of the upcoming VHB ProDok Course "Quantitative Empirical Accounting Research and Open Science Methods". We will use this repository to collaborate on the class project and to share class materials. Please keep in mind that this a _public_ repository, meaning that everybody can read its content. When you are new to Github I encourage you to take a look at the section ("Some guidance on git and Github") below prior to jumping at the content of the repo or the class project.
 
 _If you are here and not a course member, feel free to browse around. Unfortunately, this course works with licensed data that you are most likely not able to access. You can, however, take a look at the code and the slides if you are interested._
 
-
-### Get changes from main repo via remotes
-
-Follow this link: https://garygregory.wordpress.com/2016/11/10/how-to-catch-up-my-git-fork-to-master/ 
-
-Go to "Configuring a git remote for a fork" section and follow it
 
 ### Class project
 
@@ -54,6 +45,8 @@ Quoting from happygitwithr.com:
 >"Git is s a version control system. Its original purpose was to help groups of developers work collaboratively on big software projects. Git manages the evolution of a set of files – called a repository – in a sane, highly structured way. If you have no idea what I’m talking about, think of it as the “Track Changes” features from Microsoft Word on steroids". 
 
 A potential start is https://guides.github.com/activities/hello-world/ or http://kbroman.org/github_tutorial/. If you are interested in somewhat more detail and in how to link your R/RStudio environment to Github, try http://happygitwithr.com. If you are one of these youtube kids, you might try https://www.youtube.com/watch?v=E2d91v1Twcc. Don’t blame me if the video is boring or uninformative. I am not a youtube kid.
+
+Follow this link: https://garygregory.wordpress.com/2016/11/10/how-to-catch-up-my-git-fork-to-master/ to setup your forked repo so that you can keep it synched with the master repo. Go to "Configuring a git remote for a fork" section and follow it
 
 
 ### Some guidance on R

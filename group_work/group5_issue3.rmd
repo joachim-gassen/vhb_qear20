@@ -1,0 +1,362 @@
+---
+title: 'Group Assignment #3'
+author: "Group 5"
+date: "13/5/2020"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(summarytools)
+library(ggplot2)
+library(gridExtra)
+library(ggpubr)
+library(psych)
+library(ExPanDaR)
+```
+
+### Task
+We want to explore the differences between the Orbis universe of German firms and the firms that filed for Insolvency in July and August. In order to do so, we perform three different steps. First, we limit the insolvency sample to firms who filed for insolvency. Second, we merge these firms algorithmically with the firms from the Orbis universe. Thereby, we are facing multiple issues that will be described below. Third, we define a set of informative variables to compare the insolvent firms with the others. 
+
+### Step 1: Identifing firms that filed for insolvency in July and August
+Read the data (following Joachim Gassen https://github.com/joachim-gassen/vhb_qear20/blob/master/code/describe_insolvency_data.Rmd).
+
+```{r readData}
+insol_raw <- read_csv(
+  "../raw_data/insolvency_filings_de_julaug2020.csv",
+  col_types = cols()
+)
+```
+
+Select firms who filed for insolvency in July and August and delete duplicates.
+
+```{r filter and deleteDups}
+insol_op <- insol_raw %>% 
+  filter(subject == "Eröffnungen") %>% 
+  unique()
+```
+
+Check for missing values in insolvency data (following Joachim Gassen https://github.com/joachim-gassen/vhb_qear20/blob/master/code/describe_insolvency_data.Rmd).
+
+```{r displayNAs}
+na_vals <- insol_op %>%
+  summarise_all(list( ~ sum(is.na(.))))
+
+nas_df <- tibble(
+  Variable = names(insol_op),
+  `NA count` = t(na_vals)
+)
+
+kable(nas_df) %>% 
+  kable_styling(full_width = FALSE)
+```
+
+That's nice! We do not have missing values. Therefore, we are now interested in how many firms actually filed for insolvency.
+
+```{r NoofObs}
+nrow(insol_op)
+```
+
+### Step 2: Merging insolvency data with data from orbis universe
+
+After having identified all firms that filed for insolvency, we want to merge them with the Orbis data. Therefore, we first need to load the data (following Joachim Gassen https://github.com/joachim-gassen/vhb_qear20/blob/master/code/describe_insolvency_data.Rmd).
+
+```{r readsecondData}
+orbis_raw <- read_csv(
+  "../raw_data/orbis_wrds_de.csv",
+  col_types = cols()
+)
+```
+
+As the Orbis data starts in the 90s, we want to restrict the observations to more recent periods. Therefore, we select only observations after 2015 and delete duplicates.
+
+```{r filter and deleteDup}
+orbis_de <- orbis_raw %>%
+  filter(year > "2015") %>%
+  unique()
+```
+
+In order to match the data with the insolvency data, we need to identify a key variable. As the insolvency data only contains the name of the filing firms, we need to rely on firm names for matching. This is not without problems because normally names are very noisy. Additionally, we should check whether every firms filed only once for insolvency (following Joachim Gassen https://github.com/joachim-gassen/vhb_qear20/blob/master/code/describe_insolvency_data.Rmd).
+
+```{r NamesCourtFileNumber}
+unique_firms <- insol_op %>%
+  distinct(name_debtor, .keep_all = TRUE)
+
+unique_firms %>%
+  group_by(insolvency_court, court_file_number) %>%
+  filter(n() > 1) %>%
+  arrange(insolvency_court, court_file_number, name_debtor) %>%
+  kable() %>%
+  kable_styling()
+```
+As we can see, there are two firms who filed for insolvency twice. While one wonder how this might come, it sould not bother our analysis because we are only interested in whether the firm filed or not. 
+
+##### Merging strategy
+In order to merge both data sets based on firm names, we try to build a key variable which is less noisy against common speeling variations. Therefore, we create a new variable which is named "key" in both datasets which contains modified names by deleting white spaces, removing punctuation and transforming letters to lower cases.
+
+```{r create key}
+insolvency <- insol_op %>%
+  mutate(key = name_debtor)
+
+insolvency$key <- gsub("[[:space:]]", "", insolvency$key)
+insolvency$key <- gsub("[[:punct:]]", "", insolvency$key)
+insolvency$key <- tolower(insolvency$key)       
+
+orbis <- orbis_de %>%
+  mutate(key = name_native)
+
+orbis$key <- gsub("[[:space:]]", "", orbis$key)
+orbis$key <- gsub("[[:punct:]]", "", orbis$key)
+orbis$key <- tolower(orbis$key) 
+```
+
+After creating the keys, we can merge both datasets with a left join. Additionally, we are creating a dummy variable "insolvency" which is 1 in the case of insolvency filing and 0 otherwise.
+```{r merge Data}
+merged_data <- left_join(orbis, insolvency, by = "key")
+
+merged_data$insolvency <- ifelse(merged_data$subject == "Eröffnungen", 1, 0)
+merged_data$insolvency[is.na(merged_data$insolvency)] <- 0
+```
+
+We select data from 2017 due to data availability criteria. In orbis we only have few information available for years 2018 and 2019 (see table below). We decide on one year to have a comparable data base. We note that firms that file for insolvency in 2020 might not differ that strongly in 2017 than they might in the following years.
+```{r tableyear}
+merged_data %>%
+  group_by(year) %>%
+  count()
+```
+
+
+```{r filter2017}
+merged_data  <- merged_data  %>%
+  filter(year == "2017")
+```
+
+Delete unneeded variables.
+```{r selectVar}
+merged_data  <- merged_data  %>%
+  select(-X1, -ctryiso, -key, -name_debtor)
+```
+
+Now, we want to explore for how many firms the merge was successfull.
+```{r checkMerge}
+table(merged_data$insolvency)
+```
+```{r countmatchedcases}
+matched_cases <- merged_data %>%
+  filter(insolvency == "1") %>%
+  group_by(name_native) %>%
+  count()
+nrow(matched_cases)
+```
+
+This does not look nice. Out of 1042 insolvency cases in 2020, we could only match 203 with data from 2017. 
+
+##### Merging issues
+As it is very unlikely that out of the 1042 insolvency cases, Orbis provide only data on 203 cases, we are facing two main merging issues. First, our merging strategy only addresses potential differences in names by punctuation, white spaces, and capital letter. Thereby, we are missing out on other differences like shortcuts etc. Additionally, it is possible that different firms share the same name which means that we cannot differentiate who of them filed for insolvency. The second issue is illustrated by the following table.
+
+```{r showmatchedcases}
+merged_data %>%
+  filter(insolvency == "1") %>%
+  group_by(name_native)%>%
+  count() %>%
+  arrange(desc(n))%>%
+  kable() %>%
+  kable_styling()
+```
+
+### Step 3: Informative variables to compare the insolvent firms with solvent firms. 
+
+#### We start with some basic descriptive tables showing the different characteristics of solvent and insolvent firms.
+
+The following tables demonstrate the observations by industry by solvent and insolvent firms. While "Other Services" amount for most observations in the solvent and insolvent subsample, followed by "Wholesale and construction industry", the "transport and metal product industry" account for over 5% of insolvent cases. Especially, "Food, beverages and tobacco", as well as, "Wood, cork, paper", and "Gas, Water, Electricity industries" show the fewest cases of insolvency in our sample. 
+
+```{r TablebyIndustry}
+print(ctable(x=merged_data$major_sector, y = merged_data$insolvency, prop ="c"), method = "render")
+```
+
+Having a look at the listing status of firms, we see that most insolvent firms are unlisted in 2017. 
+```{r TablebyListing}
+print(ctable(x=merged_data$listed, y = merged_data$insolvency, prop ="c"), method = "render")
+```
+
+Additionally, insolvent firms apply predominantly local GAAP as accounting rule. 
+```{r TablebyAccRule}
+print(ctable(x=merged_data$accpractice, y = merged_data$insolvency, prop ="c"), method = "render")
+```
+
+#### Based on the paper by Beaver et. al (2012) we decided to calcualte the following determinants: 
+
+1) Profitability: Calculated by ROA
+2) Loss year: Indicator for negative ROA in 2017
+3) Leverage: Calculated by total liabilities / Total assets
+4) Size: Calculated as ln of total assets
+
+###### Calculations
+1) Profitability: Calculated by ROA
+```{r CalculateROA}
+merged_data$roa <- merged_data$pl / merged_data$toas
+```
+
+2) Loss year: Equals 1 when ROA is negative in 2017 and 0 otherwise
+```{r calculateLossyeardummy}
+merged_data$loss <- ifelse(merged_data$roa < 0, 1, 0)
+```
+
+3) Leverage: Calculated by total liabilities / total assets
+```{r calculateLeverage}
+merged_data$lta <- (merged_data$ncli + merged_data$culi) / merged_data$toas
+```
+
+4) Size: Calculated as ln of total assets
+```{r CalculateSize}
+merged_data$lntoas <- log(merged_data$toas)
+```
+
+Quick check how many non-missing values we have for the different determinants.
+```{r checknonNAs}
+sum(!is.na(merged_data$roa))
+sum(!is.na(merged_data$loss))
+sum(!is.na(merged_data$lta))
+sum(!is.na(merged_data$lntoas))
+```
+
+###### Check for differences between solvent and insolvent firms
+1) Profitability: ROA
+We look at the return on asset of our sample in order to determine differences in profitability between solvent and insolvent firms. First, we check the distribution. 
+```{r hist roa}
+ggplot(merged_data, aes(x=roa)) +
+    geom_histogram(colour="black", fill="white")
+```
+
+The distribution shows that there are extreme outliers. Therefore, we applying outlier treatment methods. 
+```{r outliers roa}
+merged_data$roa2 <- treat_outliers(merged_data$roa, truncate = FALSE)
+ggplot(merged_data, aes(x=roa2)) +
+    geom_histogram(colour="black", fill="white")
+```
+
+Then, we look at the summary statistics for the treated variable
+```{r sum roa}
+group_by(merged_data, insolvency) %>%
+  summarise(
+    count = n(),
+    mean = mean(roa2, na.rm = TRUE),
+    sd = sd(roa2, na.rm = TRUE)
+  )
+```
+
+To get a visual expression for those differences in the mean, we create a boxplot. 
+```{r boxplot roa}
+ggboxplot(merged_data, x = "insolvency", y = "roa2", 
+          color = "insolvency", palette = c("#00AFBB", "#E7B800"),
+        ylab = "Return on assets", xlab = "Insolvency")+
+  coord_cartesian(ylim = c(-0.5, 0.5))
+```
+
+The test whether the differences in means a significant, we create a two-sided t-test. 
+```{r t-test roa}
+t.test(merged_data$roa2 ~ merged_data$insolvency)
+```
+
+2) Loss year: LOSS
+We look at the losses in the year. First, we check again the distribution. 
+```{r ggplot loss}
+ggplot(merged_data, aes(x=loss)) +
+    geom_histogram(colour="black", fill="white")
+```
+
+The distribution shows that there are more firms who made a gain in overall. But how does this differ among solvent and insolvent firms?
+```{r sum loss}
+group_by(merged_data, insolvency) %>%
+  summarise(
+    count = n(),
+    mean = mean(loss, na.rm = TRUE),
+    sd = sd(loss, na.rm = TRUE)
+  )
+```
+
+To get a visual expression for those differences in the mean, we create a boxplot. 
+```{r boxplot loss}
+ggboxplot(merged_data, x = "insolvency", y = "loss", 
+          color = "insolvency", palette = c("#00AFBB", "#E7B800"),
+        ylab = "Return on assets", xlab = "Insolvency")+
+  coord_cartesian(ylim = c(0, 1))
+```
+
+The test whether the differences in means is significant, we create a two-sided t-test. 
+```{r ttest loss}
+t.test(merged_data$loss ~ merged_data$insolvency)
+```
+
+3) Leverage: LTA
+We first check the distribution
+```{r ggplot lta}
+ggplot(merged_data, aes(x=lta)) +
+    geom_histogram(colour="black", fill="white")
+```
+
+We need to deal again with extreme outliers.
+```{r outliers lta}
+merged_data$lta2 <- treat_outliers(merged_data$lta, truncate = FALSE)
+ggplot(merged_data, aes(x=lta2)) +
+    geom_histogram(colour="black", fill="white")
+```
+
+Then, we look at the summary statistics for the treated variable
+```{r sum lta}
+group_by(merged_data, insolvency) %>%
+  summarise(
+    count = n(),
+    mean = mean(lta2, na.rm = TRUE),
+    sd = sd(lta2, na.rm = TRUE)
+  )
+```
+
+To get a visual expression for those differences in the mean, we create a boxplot. 
+```{r boxplot lta}
+ggboxplot(merged_data, x = "insolvency", y = "lta2", 
+          color = "insolvency", palette = c("#00AFBB", "#E7B800"),
+        ylab = "Return on assets", xlab = "Insolvency")
+```
+
+The test whether the differences in means a significant, we create a two-sided t-test. 
+```{r ttest lta}
+t.test(merged_data$roa2 ~ merged_data$insolvency)
+```
+
+4) Size: LNTOAS
+Lets have a look at distribution of size.
+```{r distribution lntoas}
+ggplot(merged_data, aes(x=lntoas)) +
+    geom_histogram(colour="black", fill="white")
+```
+
+This looks nice. So lets get a summary statistic.
+```{r sum size}
+merged_data %>%
+  group_by(insolvency) %>%
+  summarise(
+    count = n(),
+    mean = mean(lntoas, na.rm = TRUE),
+    sd = sd(lntoas, na.rm = TRUE)
+  )
+```
+
+As both means are very similar, lets check the boxplot. 
+```{r}
+ggboxplot(merged_data, x = "insolvency", y = "lntoas", 
+          color = "insolvency", palette = c("#00AFBB", "#E7B800"),
+        ylab = "Size", xlab = "Insolvency")+
+  coord_cartesian(ylim = c(0, 20))
+```
+
+And now we perform a ttest
+```{r ttest size}
+t.test(merged_data$lntoas~merged_data$insolvency)
+```
+
+

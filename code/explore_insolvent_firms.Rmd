@@ -1,0 +1,163 @@
+---
+title: "Explore Jul/Aug 20 insolvent firms"
+author: "Joachim Gassen"
+date: "2020-09-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(ExPanDaR)
+source("../code/utils.R")
+```
+
+### Import data
+
+To keep this file concise, I am importing the final base sample here. The interested reader can always have a look at the files that creating the cross-sectional sample. 
+
+```{r ImportData}
+# Raw data is read in 'code/download_data.R'. The matching is based on cleaned 
+# string matching ('code/match_firm_names.R' and 'code/utils.R'). The merging 
+# and sample construction is done in 'code/prepare_cross_sectional_sample.R'.
+
+insolvent_firms <- read_csv("../raw_data/insolvency_filings_de_julaug2020.csv", 
+                            col_types = cols()) %>%
+  filter(subject == "Eröffnungen") %>%
+  filter(!is.na(name_debtor)) %>% 
+  pull(name_debtor) %>%
+  unique()
+
+matched_firms <- read_csv("../data/matched_names_clean.csv", col_types = cols())
+base_smp <- read_csv("../data/cross_sectional_sample.csv", col_types = cols())
+```
+
+We have matched `r nrow(matched_firms)` out of `r format(length(insolvent_firms), big.mark = ",")` (`r format(100 * nrow(matched_firms)/length(insolvent_firms), digits = 2)`%) firms. Requiring also accounting data from Orbis, we have the following cross-sectional sample.
+
+```{r CSSample}
+cases_by_year <- addmargins(table(base_smp$year, base_smp$insolvent), 1:2)
+colnames(cases_by_year) <- c("Not insolvent", "Insolvent", "Sum")
+
+cases_by_year %>%
+  kable(format.args = list(big.mark = ",")) %>%
+  kable_styling(full_width = F)
+
+```
+
+The sample spreads over time as I use the most current data for each firm The difference in insolvent cases results from `r nrow(matched_firms) - nrow(base_smp %>% filter(insolvent))` firm names matching duplicate BVD IDs. For the analysis, I will concentrate to cases that have accounting data from at least 2016 available. 
+
+
+### Insolvencies by industries
+
+Let's see whether insolvencies are clustered within certain industries.
+
+```{r InsByInd}
+smp <- base_smp %>%
+  filter(year >= 2016)
+
+cases_by_ind <- prop.table(table(smp$ff12ind_desc, smp$insolvent), 2)
+colnames(cases_by_ind) <- c("Not insolvent", "Insolvent")
+
+cases_by_ind %>%
+  kable(format.args = list(big.mark = ",", digits = 3)) %>%
+  kable_styling(full_width = F)
+
+```
+
+Looks as if firms from utilities and financial services are underrepresented and retail/services as well as consumer non-durables are over-represented. Makes sense.
+
+### Raw descriptive tables
+
+Time to look at some overall descriptives. First, for the insolvent firms.
+
+```{r DescriptivesInsol}
+
+
+
+prepare_descriptive_table(smp %>% 
+                            filter(insolvent) %>% 
+                            select(-year, -insolvent))$kable_ret %>%
+  kable_styling(full_width = F)
+
+```
+
+And now, the "control group".
+
+
+```{r DescriptivesNoInsol}
+
+prepare_descriptive_table(smp %>% 
+                            filter(!insolvent) %>% 
+                            select(-year, -insolvent))$kable_ret %>%
+  kable_styling(full_width = F)
+
+```
+
+
+### Clean data and final descriptives
+
+You see that we have only very few insolvent cases with income statement data available. Thus, I will concentrate my analysis on balance sheet data. Also, I will use the main summary measures (that have decent coverage) and use logged values of total assets and employees. I will also winsorize the variables that have extreme distributions. Another round of descriptive tables.
+
+```{r DescriptivesInsol2}
+
+smp <- smp %>% select(
+  -toas, -opre, -empl, -ln_opre, -opre_aveta, -pl_aveta, -fipl_aveta, 
+  -loan_ta, -cred_ta
+)
+smp[, c("fias_ta", "cuas_ta", "cash_ta", "eqr", "culi_ta")] <- treat_outliers(
+  smp[, c("fias_ta", "cuas_ta", "cash_ta", "eqr", "culi_ta")]
+)
+
+prepare_descriptive_table(smp %>% 
+                            filter(insolvent) %>% 
+                            select(-year, -insolvent))$kable_ret %>%
+  kable_styling(full_width = F)
+
+```
+
+
+```{r DescriptivesNoInsol2}
+
+prepare_descriptive_table(smp %>% 
+                            filter(!insolvent) %>% 
+                            select(-year, -insolvent))$kable_ret %>%
+  kable_styling(full_width = F)
+```
+
+
+### Some tests
+
+Based on this one can quickly glance that insolvent firms tend to have more employees but are not larger in terms of total assets. Also, while having comparable fixed and current assets ratios, they have less cash, lower equity rations and more current liabilities. Let us wrap this up with some quick tests based on linear probability models.
+
+```{r OLSregression, warning=FALSE}
+
+mods <- prepare_regression_table(
+  smp, dvs = rep("insolvent", 9),
+  idvs = list(
+    "ln_toas", "ln_empl", "fias_ta", "cuas_ta", "cash_ta", "eqr", "culi_ta", 
+    c("ln_toas", "ln_empl", "fias_ta", "cuas_ta", "cash_ta", "eqr", "culi_ta"),
+    c("ln_toas", "ln_empl", "fias_ta", "cuas_ta", "cash_ta", "eqr", "culi_ta")
+  ),
+  feffects = c(rep("", 8), "ff12ind_desc"),
+  models = rep("ols", 9)
+)
+
+htmltools::HTML(mods$table)
+```
+
+How does the multiple model without fixed effects look like as a logit model?
+
+```{r Logitregression, warning=FALSE}
+
+mod_logit <- prepare_regression_table(
+  smp, dvs = "insolvent",
+  idvs = c("ln_toas", "ln_empl", "cash_ta", "eqr", "culi_ta")
+)
+
+htmltools::HTML(mod_logit$table)
+```
+
+OK. The data seem to make sense. I particularly like the employment result. We can discuss in class why ;-)
+

@@ -17,7 +17,7 @@ There are 2 datasets which we need to analyse in order to explore the difference
 
 ```{r readdata}
 insol_raw <- read_csv(
-  "~/R/vhb_qear20/raw_data/insolvency_filings_de_julaug2020.csv",
+  "../raw_data/insolvency_filings_de_julaug2020.csv",
   col_types = cols()
 )
 ```
@@ -39,7 +39,7 @@ We still need the second dataset, but it cannot be uploaded to github. That mean
 
 ```{r readOrbisdata}
 orbis_wrds <- read.csv(
-  "~/R/vhb_qear20/raw_data/orbis_wrds_de.csv.gz", sep = ",")
+  "../raw_data/orbis_wrds_de.csv.gz", sep = ",")
 ```
 
 We now have two datasets prepared for analysis. What do they have in common? When we look at the data, we see that the names of the firms can be seen as a “bridge” between the two datasets. To check this, we compare the company names in both datasets and create a new variable that takes the value “TRUE” if there is a match and the value “FALSE” otherwise. We add this variable to the Orbis dataset, cause we still have financial data there and we want to analyze it further. Let’s compare the firm names and then look at the new variable:5. How many matches do we have?

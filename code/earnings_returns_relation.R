@@ -7,6 +7,11 @@ library(tidyverse)
 library(zoo)
 library(lubridate)
 library(ExPanDaR)
+library(magrittr) 
+library(dplyr)
+library(colorspace)
+library(ggplot2)
+
 
 acc <- readRDS("data/cstat_global_acc_data_deu.rds")
 mrets <- readRDS("data/cstat_global_monthly_returns_deu.rds") 

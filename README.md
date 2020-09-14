@@ -2,10 +2,19 @@
 
 ### Welcome!
 
+This is Group JJMV - no. 2
+
+
 This is the repository of the upcoming VHB ProDok Course "Quantitative Empirical Accounting Research and Open Science Methods". We will use this repository to collaborate on the class project and to share class materials. Please keep in mind that this a _public_ repository, meaning that everybody can read its content. When you are new to Github I encourage you to take a look at the section ("Some guidance on git and Github") below prior to jumping at the content of the repo or the class project.
 
 _If you are here and not a course member, feel free to browse around. Unfortunately, this course works with licensed data that you are most likely not able to access. You can, however, take a look at the code and the slides if you are interested._
 
+
+### Get changes from main repo via remotes
+
+Follow this link: https://garygregory.wordpress.com/2016/11/10/how-to-catch-up-my-git-fork-to-master/ 
+
+Go to "Configuring a git remote for a fork" section and follow it
 
 ### Class project
 
